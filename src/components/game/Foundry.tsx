@@ -1,6 +1,6 @@
 import { useGame } from '@/hooks/useGameState';
 import { ORE_MAP } from '@/data/ores';
-import { FOUNDRY_TIERS } from '@/data/recipes';
+import { FOUNDRY_TIERS, RECIPE_MAP } from '@/data/recipes';
 import { useState, useEffect } from 'react';
 
 export function Foundry() {
@@ -115,16 +115,21 @@ export function Foundry() {
           {availableOres.map(([id, qty]) => {
             const ore = ORE_MAP[id];
             if (!ore) return null;
+            const canSmelt = state.foundryTier >= ore.minSmeltTier;
             return (
               <button
                 key={id}
-                onClick={() => setSelectedOre(id)}
+                onClick={() => canSmelt && setSelectedOre(id)}
+                disabled={!canSmelt}
                 className={`flex items-center justify-between px-3 py-1.5 border rounded-sm text-left transition-colors ${
+                  !canSmelt ? 'border-border/50 opacity-40 cursor-not-allowed' :
                   selectedOre === id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-muted-foreground/30'
                 }`}
               >
                 <span className={`font-mono-game text-xs text-rarity-${ore.rarity}`}>{ore.name}</span>
-                <span className="font-mono-game text-xs text-muted-foreground">{qty}</span>
+                <span className="font-mono-game text-xs text-muted-foreground">
+                  {canSmelt ? qty : `T${ore.minSmeltTier} req`}
+                </span>
               </button>
             );
           })}
@@ -147,7 +152,7 @@ export function Foundry() {
           <div className="text-[10px] font-mono-game text-muted-foreground space-y-0.5">
             {nextTier.cost.map((c, i) => (
               <p key={i}>
-                {c.type === 'currency' ? `${c.quantity}¤` : `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots`}
+                {c.type === 'currency' ? `${c.quantity.toLocaleString()}¤` : c.type === 'ingot' ? `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots` : `${c.quantity}x ${RECIPE_MAP[c.itemId]?.name || c.itemId}`}
               </p>
             ))}
           </div>

@@ -1,12 +1,20 @@
-import { createContext, useContext, useReducer, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { ALL_ORES, ORE_MAP, rollMiningDrop, type Ore, type OreRarity } from '@/data/ores';
-import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP } from '@/data/recipes';
+import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
 
 export interface SmeltingJob {
   oreId: string;
   refined: boolean;
   startTime: number;
   duration: number;
+}
+
+export interface AutomationJob {
+  machineId: string;
+  recipeId: string;
+  enabled: boolean;
+  interval: number;
+  lastCraft: number;
 }
 
 export interface GameState {
@@ -19,6 +27,7 @@ export interface GameState {
   foundryTier: number;
   smeltingJobs: SmeltingJob[];
   unlockedMachines: string[];
+  automationJobs: AutomationJob[];
   totalMined: number;
   lastDrop: { ore: Ore; quantity: number } | null;
 }
@@ -33,8 +42,17 @@ const initialState: GameState = {
   foundryTier: 1,
   smeltingJobs: [],
   unlockedMachines: [],
+  automationJobs: [],
   totalMined: 0,
   lastDrop: null,
+};
+
+// ─── Processing difficulty -> smelting speed factor ──────────────────────────
+const PROCESSING_SPEED_FACTOR: Record<string, number> = {
+  easy: 1.0,
+  moderate: 0.7,
+  expensive: 0.4,
+  extreme: 0.2,
 };
 
 type Action =
@@ -47,6 +65,8 @@ type Action =
   | { type: 'UPGRADE_FOUNDRY' }
   | { type: 'CRAFT_ITEM'; recipeId: string }
   | { type: 'TICK_SMELTING' }
+  | { type: 'TOGGLE_AUTOMATION'; machineId: string; recipeId: string }
+  | { type: 'TICK_AUTOMATION' }
   | { type: 'LOAD_STATE'; state: GameState };
 
 function getMiningSpeed(state: GameState): number {
@@ -64,7 +84,7 @@ function getMultiChance(state: GameState): number {
   return level * 0.1;
 }
 
-function getCurrentFoundry(state: GameState) {
+function getCurrentFoundry(state: GameState): FoundryUpgrade {
   return FOUNDRY_TIERS[state.foundryTier - 1] || FOUNDRY_TIERS[0];
 }
 
@@ -136,6 +156,12 @@ function gameReducer(state: GameState, action: Action): GameState {
       if (state.smeltingJobs.length >= foundry.slots) return state;
 
       const { oreId, refined } = action;
+      const ore = ORE_MAP[oreId];
+      if (!ore) return state;
+
+      // Check foundry tier meets ore's minimum smelt tier
+      if (state.foundryTier < ore.minSmeltTier) return state;
+
       const source = refined ? state.refinedOres : state.ores;
       if ((source[oreId] || 0) < 1) return state;
 
@@ -144,7 +170,8 @@ function gameReducer(state: GameState, action: Action): GameState {
       if (newSource[oreId] <= 0) delete newSource[oreId];
 
       const baseDuration = 5000;
-      const duration = baseDuration / foundry.speedMultiplier;
+      const processingFactor = PROCESSING_SPEED_FACTOR[ore.processingDifficulty] || 1.0;
+      const duration = baseDuration / (foundry.speedMultiplier * processingFactor);
 
       const job: SmeltingJob = { oreId, refined, startTime: Date.now(), duration };
       const stateKey = refined ? 'refinedOres' : 'ores';
@@ -195,6 +222,8 @@ function gameReducer(state: GameState, action: Action): GameState {
           if (state.currency < cost.quantity) canAfford = false;
         } else if (cost.type === 'ingot') {
           if ((state.ingots[cost.itemId] || 0) < cost.quantity) canAfford = false;
+        } else if (cost.type === 'item') {
+          if ((state.items[cost.itemId] || 0) < cost.quantity) canAfford = false;
         }
       }
       if (!canAfford) return state;
@@ -208,6 +237,11 @@ function gameReducer(state: GameState, action: Action): GameState {
           newIngots[cost.itemId] = (newIngots[cost.itemId] || 0) - cost.quantity;
           if (newIngots[cost.itemId] <= 0) delete newIngots[cost.itemId];
           newState.ingots = newIngots;
+        } else if (cost.type === 'item') {
+          const newItems = { ...newState.items };
+          newItems[cost.itemId] = (newItems[cost.itemId] || 0) - cost.quantity;
+          if (newItems[cost.itemId] <= 0) delete newItems[cost.itemId];
+          newState.items = newItems;
         }
       }
       return newState;
@@ -248,6 +282,82 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines };
     }
 
+    case 'TOGGLE_AUTOMATION': {
+      const { machineId, recipeId } = action;
+      if (!state.unlockedMachines.includes(machineId)) return state;
+
+      const existing = state.automationJobs.find(j => j.machineId === machineId);
+      if (existing) {
+        // If same recipe, toggle on/off. If different recipe, switch recipe.
+        if (existing.recipeId === recipeId) {
+          return {
+            ...state,
+            automationJobs: state.automationJobs.map(j =>
+              j.machineId === machineId ? { ...j, enabled: !j.enabled } : j
+            ),
+          };
+        } else {
+          return {
+            ...state,
+            automationJobs: state.automationJobs.map(j =>
+              j.machineId === machineId ? { ...j, recipeId, enabled: true, lastCraft: Date.now() } : j
+            ),
+          };
+        }
+      }
+
+      // New automation job
+      const interval = getAutomationInterval(machineId);
+      const newJob: AutomationJob = {
+        machineId,
+        recipeId,
+        enabled: true,
+        interval,
+        lastCraft: Date.now(),
+      };
+      return { ...state, automationJobs: [...state.automationJobs, newJob] };
+    }
+
+    case 'TICK_AUTOMATION': {
+      const now = Date.now();
+      let changed = false;
+      let newState = state;
+
+      for (const job of state.automationJobs) {
+        if (!job.enabled) continue;
+        if (now - job.lastCraft < job.interval) continue;
+
+        // Try to auto-craft
+        const recipe = RECIPE_MAP[job.recipeId];
+        if (!recipe) continue;
+        if (recipe.requiredMachine && !newState.unlockedMachines.includes(recipe.requiredMachine)) continue;
+
+        // Check ingredients
+        let canCraft = true;
+        for (const ing of recipe.ingredients) {
+          const source = ing.type === 'ingot' ? newState.ingots : newState.items;
+          if ((source[ing.itemId] || 0) < ing.quantity) {
+            canCraft = false;
+            break;
+          }
+        }
+
+        if (canCraft) {
+          newState = gameReducer(newState, { type: 'CRAFT_ITEM', recipeId: job.recipeId });
+          // Update lastCraft timestamp
+          newState = {
+            ...newState,
+            automationJobs: newState.automationJobs.map(j =>
+              j.machineId === job.machineId ? { ...j, lastCraft: now } : j
+            ),
+          };
+          changed = true;
+        }
+      }
+
+      return changed ? newState : state;
+    }
+
     case 'TICK_SMELTING': {
       const now = Date.now();
       let changed = false;
@@ -270,11 +380,67 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
+// ─── Automation interval by machine category ─────────────────────────────────
+const BASIC_MACHINES = ['wafer_cutter', 'etching_station'];
+const INTERMEDIATE_MACHINES = ['cnc_mill', 'laser_cutter', 'plasma_welder', 'chemical_reactor', 'centrifuge'];
+const ADVANCED_MACHINES = ['advanced_fab', 'quantum_lab'];
+
+function getAutomationInterval(machineId: string): number {
+  if (BASIC_MACHINES.includes(machineId)) return 10000;
+  if (INTERMEDIATE_MACHINES.includes(machineId)) return 7000;
+  if (ADVANCED_MACHINES.includes(machineId)) return 4000;
+  return 10000;
+}
+
+// ─── Save state migration ────────────────────────────────────────────────────
+const ORE_ID_REMAP: Record<string, string> = {
+  silicon: 'quartz',
+  neodymium: 'monazite',
+};
+
+// Old foundry tier -> new foundry tier mapping
+const FOUNDRY_TIER_REMAP: Record<number, number> = {
+  1: 1,
+  2: 2,
+  3: 5,
+};
+
+function migrateOreRecord(record: Record<string, number>): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const [key, val] of Object.entries(record)) {
+    const newKey = ORE_ID_REMAP[key] || key;
+    // Only keep entries for ores that exist in the new system
+    if (ORE_MAP[newKey]) {
+      result[newKey] = (result[newKey] || 0) + val;
+    }
+  }
+  return result;
+}
+
+function migrateState(saved: any): GameState {
+  const state = { ...initialState, ...saved, smeltingJobs: [] };
+
+  // Migrate ore records
+  if (state.ores) state.ores = migrateOreRecord(state.ores);
+  if (state.refinedOres) state.refinedOres = migrateOreRecord(state.refinedOres);
+  if (state.ingots) state.ingots = migrateOreRecord(state.ingots);
+
+  // Migrate foundry tier if it was from old 3-tier system
+  if (state.foundryTier && FOUNDRY_TIER_REMAP[state.foundryTier] !== undefined && state.foundryTier <= 3) {
+    state.foundryTier = FOUNDRY_TIER_REMAP[state.foundryTier];
+  }
+
+  // Ensure automationJobs exists
+  if (!state.automationJobs) state.automationJobs = [];
+
+  return state;
+}
+
 interface GameContextType {
   state: GameState;
   dispatch: React.Dispatch<Action>;
   miningSpeed: number;
-  foundry: ReturnType<typeof getCurrentFoundry>;
+  foundry: FoundryUpgrade;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -284,7 +450,7 @@ function loadState(): GameState {
     const saved = localStorage.getItem('voidmarket_state');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...initialState, ...parsed, smeltingJobs: [] };
+      return migrateState(parsed);
     }
   } catch {}
   return initialState;
@@ -301,6 +467,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Tick smelting
   useEffect(() => {
     const interval = setInterval(() => dispatch({ type: 'TICK_SMELTING' }), 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Tick automation
+  useEffect(() => {
+    const interval = setInterval(() => dispatch({ type: 'TICK_AUTOMATION' }), 2000);
     return () => clearInterval(interval);
   }, []);
 

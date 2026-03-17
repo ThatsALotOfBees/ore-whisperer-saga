@@ -26,121 +26,337 @@ export interface FoundryUpgrade {
   cost: { itemId: string; type: 'ingot' | 'item' | 'currency'; quantity: number }[];
   slots: number;
   speedMultiplier: number;
+  canAlloy: boolean;
+  automationSupport: boolean;
   description: string;
 }
 
+// ─── Mining Upgrades ─────────────────────────────────────────────────────────
 export const MINING_UPGRADES: MiningUpgrade[] = [
   { id: 'drill_speed', name: 'Drill Speed', description: 'Faster mining ticks', maxLevel: 10, baseCost: 50, costMultiplier: 2.2, effect: 'speed', effectPerLevel: 0.15 },
   { id: 'ore_scanner', name: 'Ore Scanner', description: 'Higher chance for rare ores', maxLevel: 10, baseCost: 100, costMultiplier: 2.5, effect: 'luck', effectPerLevel: 0.12 },
   { id: 'multi_drill', name: 'Multi-Drill', description: 'Chance to mine multiple ores', maxLevel: 5, baseCost: 500, costMultiplier: 3.0, effect: 'multiDrop', effectPerLevel: 0.1 },
 ];
 
+// ─── 20-Tier Foundry Progression ─────────────────────────────────────────────
 export const FOUNDRY_TIERS: FoundryUpgrade[] = [
-  { id: 'induction_furnace', name: 'Induction Furnace', tier: 1, cost: [], slots: 1, speedMultiplier: 1.0, description: 'Basic smelting. 1 slot, standard speed.' },
-  { id: 'arc_smelter', name: 'Arc Smelter', tier: 2, cost: [{ itemId: 'currency', type: 'currency', quantity: 500 }, { itemId: 'iron', type: 'ingot', quantity: 20 }, { itemId: 'copper', type: 'ingot', quantity: 15 }], slots: 2, speedMultiplier: 1.5, description: '2 slots, 1.5x speed.' },
-  { id: 'plasma_kiln', name: 'Plasma Kiln', tier: 3, cost: [{ itemId: 'currency', type: 'currency', quantity: 2000 }, { itemId: 'titanium', type: 'ingot', quantity: 10 }, { itemId: 'platinum', type: 'ingot', quantity: 5 }], slots: 4, speedMultiplier: 3.0, description: '4 slots, 3x speed. Requires refined ores.' },
+  // Tier 1: Starter
+  { id: 'electric_furnace_1', name: 'Electric Furnace I', tier: 1, cost: [], slots: 1, speedMultiplier: 1.0, canAlloy: false, automationSupport: false, description: 'Starter furnace. 1 slot, standard speed.' },
+  // Tier 2
+  { id: 'electric_furnace_2', name: 'Electric Furnace II', tier: 2, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 500 },
+    { itemId: 'iron', type: 'ingot', quantity: 20 },
+    { itemId: 'copper', type: 'ingot', quantity: 15 },
+  ], slots: 2, speedMultiplier: 1.3, canAlloy: false, automationSupport: false, description: '2 slots, 1.3x speed. Processes 2 ores at once.' },
+  // Tier 3: Alloy unlock
+  { id: 'alloy_furnace_1', name: 'Electric Alloy Furnace I', tier: 3, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 1500 },
+    { itemId: 'tin', type: 'ingot', quantity: 20 },
+    { itemId: 'zinc', type: 'ingot', quantity: 15 },
+    { itemId: 'nickel', type: 'ingot', quantity: 10 },
+  ], slots: 2, speedMultiplier: 1.5, canAlloy: true, automationSupport: false, description: '2 slots, 1.5x speed. Unlocks alloy smelting.' },
+  // Tier 4
+  { id: 'alloy_furnace_2', name: 'Electric Alloy Furnace II', tier: 4, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 3000 },
+    { itemId: 'aluminum', type: 'ingot', quantity: 25 },
+    { itemId: 'quartz', type: 'ingot', quantity: 10 },
+  ], slots: 3, speedMultiplier: 1.8, canAlloy: true, automationSupport: false, description: '3 slots, 1.8x speed. Higher alloy yield.' },
+  // Tier 5
+  { id: 'industrial_smelter_1', name: 'Industrial Electric Smelter I', tier: 5, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 6000 },
+    { itemId: 'silver', type: 'ingot', quantity: 10 },
+    { itemId: 'magnetite', type: 'ingot', quantity: 15 },
+  ], slots: 3, speedMultiplier: 2.2, canAlloy: true, automationSupport: false, description: '3 slots, 2.2x speed. Processes mid-tier ores.' },
+  // Tier 6: Automation unlock
+  { id: 'industrial_smelter_2', name: 'Industrial Electric Smelter II', tier: 6, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 10000 },
+    { itemId: 'gold', type: 'ingot', quantity: 5 },
+    { itemId: 'chromite', type: 'ingot', quantity: 10 },
+    { itemId: 'gear_assembly', type: 'item', quantity: 2 },
+  ], slots: 4, speedMultiplier: 2.5, canAlloy: true, automationSupport: true, description: '4 slots, 2.5x speed. Adds automation support.' },
+  // Tier 7
+  { id: 'precision_smelter_1', name: 'Precision Electric Smelter I', tier: 7, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 18000 },
+    { itemId: 'platinum', type: 'ingot', quantity: 5 },
+    { itemId: 'cobalt', type: 'ingot', quantity: 8 },
+    { itemId: 'compact_gearbox', type: 'item', quantity: 1 },
+  ], slots: 4, speedMultiplier: 3.0, canAlloy: true, automationSupport: true, description: '4 slots, 3x speed. Required for refined components.' },
+  // Tier 8
+  { id: 'precision_smelter_2', name: 'Precision Electric Smelter II', tier: 8, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 30000 },
+    { itemId: 'tungsten', type: 'ingot', quantity: 8 },
+    { itemId: 'lithium', type: 'ingot', quantity: 5 },
+    { itemId: 'stabilizer_unit', type: 'item', quantity: 1 },
+  ], slots: 5, speedMultiplier: 3.5, canAlloy: true, automationSupport: true, description: '5 slots, 3.5x speed. Unlocks Tier 3 components.' },
+  // Tier 9
+  { id: 'advanced_furnace_1', name: 'Advanced Electric Furnace I', tier: 9, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 50000 },
+    { itemId: 'titanium', type: 'ingot', quantity: 10 },
+    { itemId: 'molybdenum', type: 'ingot', quantity: 5 },
+    { itemId: 'modular_frame', type: 'item', quantity: 1 },
+  ], slots: 5, speedMultiplier: 4.0, canAlloy: true, automationSupport: true, description: '5 slots, 4x speed. High throughput; multi-ore alloying.' },
+  // Tier 10
+  { id: 'advanced_furnace_2', name: 'Advanced Electric Furnace II', tier: 10, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 80000 },
+    { itemId: 'tantalum', type: 'ingot', quantity: 5 },
+    { itemId: 'niobium', type: 'ingot', quantity: 5 },
+    { itemId: 'structural_core', type: 'item', quantity: 1 },
+  ], slots: 6, speedMultiplier: 4.5, canAlloy: true, automationSupport: true, description: '6 slots, 4.5x speed. Supports rare mid-game ores.' },
+  // Tier 11: Plasma
+  { id: 'plasma_smelter_1', name: 'Plasma Electric Smelter I', tier: 11, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 120000 },
+    { itemId: 'iridium', type: 'ingot', quantity: 3 },
+    { itemId: 'osmium', type: 'ingot', quantity: 3 },
+    { itemId: 'heavy_frame', type: 'item', quantity: 1 },
+  ], slots: 6, speedMultiplier: 5.5, canAlloy: true, automationSupport: true, description: '6 slots, 5.5x speed. Plasma heating; exotic alloys.' },
+  // Tier 12
+  { id: 'plasma_smelter_2', name: 'Plasma Electric Smelter II', tier: 12, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 180000 },
+    { itemId: 'rhodium', type: 'ingot', quantity: 3 },
+    { itemId: 'thorium', type: 'ingot', quantity: 3 },
+    { itemId: 'cooling_assembly', type: 'item', quantity: 2 },
+  ], slots: 7, speedMultiplier: 6.5, canAlloy: true, automationSupport: true, description: '7 slots, 6.5x speed. Faster plasma reactions.' },
+  // Tier 13: Nano
+  { id: 'nano_smelter_1', name: 'Nano Electric Smelter I', tier: 13, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 300000 },
+    { itemId: 'diamond', type: 'ingot', quantity: 2 },
+    { itemId: 'emerald', type: 'ingot', quantity: 2 },
+    { itemId: 'nano_frame', type: 'item', quantity: 1 },
+  ], slots: 7, speedMultiplier: 8.0, canAlloy: true, automationSupport: true, description: '7 slots, 8x speed. Micro-level precision; electronics-ready.' },
+  // Tier 14
+  { id: 'nano_smelter_2', name: 'Nano Electric Smelter II', tier: 14, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 500000 },
+    { itemId: 'ruby', type: 'ingot', quantity: 2 },
+    { itemId: 'sapphire', type: 'ingot', quantity: 2 },
+    { itemId: 'precision_matrix', type: 'item', quantity: 1 },
+  ], slots: 8, speedMultiplier: 10.0, canAlloy: true, automationSupport: true, description: '8 slots, 10x speed. Extremely fast; Tier 4 components.' },
+  // Tier 15: Fusion
+  { id: 'fusion_smelter_1', name: 'Fusion Electric Smelter I', tier: 15, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 800000 },
+    { itemId: 'painite', type: 'ingot', quantity: 1 },
+    { itemId: 'taaffeite', type: 'ingot', quantity: 1 },
+    { itemId: 'energy_channel_core', type: 'item', quantity: 1 },
+  ], slots: 8, speedMultiplier: 12.0, canAlloy: true, automationSupport: true, description: '8 slots, 12x speed. Fusion-based; ultra-rare ores.' },
+  // Tier 16
+  { id: 'fusion_smelter_2', name: 'Fusion Electric Smelter II', tier: 16, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 1200000 },
+    { itemId: 'grandidierite', type: 'ingot', quantity: 1 },
+    { itemId: 'californium', type: 'ingot', quantity: 1 },
+    { itemId: 'fusion_housing', type: 'item', quantity: 1 },
+  ], slots: 10, speedMultiplier: 15.0, canAlloy: true, automationSupport: true, description: '10 slots, 15x speed. Massive throughput; endgame alloys.' },
+  // Tier 17: Void
+  { id: 'void_smelter_1', name: 'Void Electric Smelter I', tier: 17, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 2000000 },
+    { itemId: 'veinite', type: 'ingot', quantity: 1 },
+    { itemId: 'void_crystal', type: 'ingot', quantity: 1 },
+    { itemId: 'quantum_frame', type: 'item', quantity: 1 },
+  ], slots: 10, speedMultiplier: 18.0, canAlloy: true, automationSupport: true, description: '10 slots, 18x speed. Handles Veinite + Void Ores.' },
+  // Tier 18
+  { id: 'void_smelter_2', name: 'Void Electric Smelter II', tier: 18, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 3500000 },
+    { itemId: 'dark_matter', type: 'ingot', quantity: 1 },
+    { itemId: 'dimensional_coupler', type: 'item', quantity: 1 },
+  ], slots: 12, speedMultiplier: 22.0, canAlloy: true, automationSupport: true, description: '12 slots, 22x speed. Multi-input; massive efficiency.' },
+  // Tier 19: Entropy
+  { id: 'entropy_smelter', name: 'Entropy Electric Smelter', tier: 19, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 6000000 },
+    { itemId: 'entropy_shard', type: 'ingot', quantity: 1 },
+    { itemId: 'reality_stabilizer', type: 'item', quantity: 1 },
+  ], slots: 14, speedMultiplier: 28.0, canAlloy: true, automationSupport: true, description: '14 slots, 28x speed. Near-singularity energy.' },
+  // Tier 20: Solar Singularity
+  { id: 'singularity_smelter', name: 'Solar Singularity Smelter', tier: 20, cost: [
+    { itemId: 'currency', type: 'currency', quantity: 10000000 },
+    { itemId: 'singularity', type: 'ingot', quantity: 1 },
+    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
+    { itemId: 'temporal_stabilizer', type: 'item', quantity: 1 },
+  ], slots: 20, speedMultiplier: 50.0, canAlloy: true, automationSupport: true, description: '20 slots, 50x speed. A miniature sun. Melts anything instantly.' },
 ];
 
-export const CRAFTING_RECIPES: CraftingRecipe[] = [
-  // Basic Components (Tier 1-2)
-  { id: 'carbon_film', name: 'Carbon Film', category: 'component', ingredients: [{ itemId: 'lead', type: 'ingot', quantity: 2 }], outputQuantity: 4, description: 'Thin carbon layer for resistors' },
-  { id: 'ceramic_base', name: 'Ceramic Base', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }, { itemId: 'aluminum', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Heat-resistant ceramic substrate' },
-  { id: 'copper_foil', name: 'Copper Foil', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 3 }], outputQuantity: 2, description: 'Thin copper sheeting' },
-  { id: 'copper_trace', name: 'Copper Trace', category: 'component', ingredients: [{ itemId: 'copper_foil', type: 'item', quantity: 1 }], outputQuantity: 4, description: 'Etched copper pathways' },
-  { id: 'gold_wire', name: 'Gold Wire', category: 'component', ingredients: [{ itemId: 'gold', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Ultra-fine gold bonding wire' },
-  { id: 'gold_trace', name: 'Gold Trace', category: 'component', ingredients: [{ itemId: 'gold_wire', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Precision gold circuit pathway' },
-  { id: 'fiberglass_sheet', name: 'Fiberglass Sheet', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 2 }, { itemId: 'aluminum', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Rigid PCB substrate' },
-  { id: 'electrolyte_solution', name: 'Electrolyte Solution', category: 'component', ingredients: [{ itemId: 'tin', type: 'ingot', quantity: 1 }, { itemId: 'lead', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Conductive ionic solution' },
-  { id: 'solder', name: 'Solder', category: 'component', ingredients: [{ itemId: 'tin', type: 'ingot', quantity: 2 }, { itemId: 'lead', type: 'ingot', quantity: 1 }], outputQuantity: 5, description: 'Tin-lead solder alloy' },
-  { id: 'silicon_wafer', name: 'Silicon Wafer', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 5 }], outputQuantity: 1, requiredMachine: 'wafer_cutter', description: 'Ultra-pure silicon disc' },
+// ─── 100 Components ──────────────────────────────────────────────────────────
 
-  // Additional Basic Components (Tier 2-3)
-  { id: 'titanium_alloy', name: 'Titanium Alloy Sheet', category: 'component', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 3 }, { itemId: 'aluminum', type: 'ingot', quantity: 2 }], outputQuantity: 2, description: 'Lightweight high-strength material' },
-  { id: 'thermal_paste', name: 'Thermal Paste', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 2 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Thermally conductive compound' },
-  { id: 'heat_sink', name: 'Heat Sink', category: 'component', ingredients: [{ itemId: 'aluminum', type: 'ingot', quantity: 4 }, { itemId: 'copper_foil', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Dissipates excess heat' },
-  { id: 'substrate_film', name: 'Substrate Film', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 3 }, { itemId: 'lead', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Base layer for components' },
-  { id: 'epoxy_resin', name: 'Epoxy Resin', category: 'component', ingredients: [{ itemId: 'tin', type: 'ingot', quantity: 2 }, { itemId: 'copper', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Binding and protective coating' },
-  { id: 'glass_insulator', name: 'Glass Insulator', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 2 }], outputQuantity: 4, description: 'Electrical insulation' },
-  { id: 'magnetic_core', name: 'Magnetic Core', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 4 }], outputQuantity: 2, description: 'Ferrite coil core' },
-  { id: 'silver_paste', name: 'Silver Paste', category: 'component', ingredients: [{ itemId: 'silver', type: 'ingot', quantity: 2 }, { itemId: 'copper', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Conductive paste for bonding' },
-  { id: 'mica_sheet', name: 'Mica Sheet', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }], outputQuantity: 5, description: 'High-temperature insulator' },
-  { id: 'copper_powder', name: 'Copper Powder', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 3 }], outputQuantity: 6, description: 'Finely divided copper particles' },
+// Tier 1: Basic Parts (1-15) -- made from common ore ingots
+const tier1Components: CraftingRecipe[] = [
+  { id: 'metal_plate', name: 'Metal Plate', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 3 }], outputQuantity: 4, description: 'Flat iron sheet for structural use' },
+  { id: 'reinforced_plate', name: 'Reinforced Plate', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 2 }, { itemId: 'nickel', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Hardened plate for heavy duty' },
+  { id: 'metal_rod', name: 'Metal Rod', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 2 }], outputQuantity: 4, description: 'Solid iron rod' },
+  { id: 'metal_beam', name: 'Metal Beam', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 4 }, { itemId: 'zinc', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Structural support beam' },
+  { id: 'fastener_set', name: 'Fastener Set', category: 'component', ingredients: [{ itemId: 'tin', type: 'ingot', quantity: 2 }, { itemId: 'iron', type: 'ingot', quantity: 1 }], outputQuantity: 6, description: 'Assorted bolts and nuts' },
+  { id: 'bolt_pack', name: 'Bolt Pack', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 2 }, { itemId: 'tin', type: 'ingot', quantity: 1 }], outputQuantity: 8, description: 'Standard bolt assortment' },
+  { id: 'screw_set', name: 'Screw Set', category: 'component', ingredients: [{ itemId: 'tin', type: 'ingot', quantity: 2 }, { itemId: 'zinc', type: 'ingot', quantity: 1 }], outputQuantity: 8, description: 'Precision screw collection' },
+  { id: 'basic_frame', name: 'Basic Frame', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 4 }, { itemId: 'aluminum', type: 'ingot', quantity: 2 }], outputQuantity: 2, description: 'Simple structural frame' },
+  { id: 'small_gear', name: 'Small Gear', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 2 }, { itemId: 'tin', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Small toothed wheel' },
+  { id: 'spring_coil', name: 'Spring Coil', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 2 }, { itemId: 'copper', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Coiled tension spring' },
+  { id: 'wire_bundle', name: 'Wire Bundle', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 3 }], outputQuantity: 6, description: 'Bundled copper wiring' },
+  { id: 'insulated_layer', name: 'Insulated Layer', category: 'component', ingredients: [{ itemId: 'lead', type: 'ingot', quantity: 2 }, { itemId: 'clay', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Protective insulation' },
+  { id: 'contact_pin', name: 'Contact Pin', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 1 }, { itemId: 'tin', type: 'ingot', quantity: 1 }], outputQuantity: 6, description: 'Electrical contact point' },
+  { id: 'connector_piece', name: 'Connector Piece', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 2 }, { itemId: 'zinc', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Standard connector' },
+  { id: 'basic_housing', name: 'Basic Housing', category: 'component', ingredients: [{ itemId: 'aluminum', type: 'ingot', quantity: 3 }, { itemId: 'iron', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Protective outer casing' },
+];
 
-  // Mid-tier Components (Tier 3-4)
-  { id: 'gold_plating', name: 'Gold Plating', category: 'component', ingredients: [{ itemId: 'gold', type: 'ingot', quantity: 1 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Corrosion-resistant coating' },
-  { id: 'crystal_oscillator', name: 'Crystal Oscillator', category: 'component', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 1 }, { itemId: 'gold_wire', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Frequency reference element' },
-  { id: 'vacuum_tube', name: 'Vacuum Tube', category: 'component', ingredients: [{ itemId: 'glass_insulator', type: 'item', quantity: 2 }, { itemId: 'copper_foil', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Electron emission device' },
-  { id: 'relay_switch', name: 'Relay Switch', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 2 }, { itemId: 'magnetic_core', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Electromagnetic switch' },
-  { id: 'voltage_converter', name: 'Voltage Converter', category: 'component', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 2 }, { itemId: 'inductor', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Steps voltage up or down' },
-  { id: 'circuit_breaker', name: 'Circuit Breaker', category: 'component', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 2 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Overcurrent protection device' },
-  { id: 'transformer_core', name: 'Transformer Core', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 5 }, { itemId: 'copper', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Magnetic coupling element' },
-  { id: 'platinum_electrode', name: 'Platinum Electrode', category: 'component', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 2 }], outputQuantity: 2, description: 'Stable electrochemical interface' },
-  { id: 'rare_earth_magnet', name: 'Rare Earth Magnet', category: 'component', ingredients: [{ itemId: 'neodymium', type: 'ingot', quantity: 3 }], outputQuantity: 1, description: 'Powerful permanent magnet' },
-  { id: 'carbon_nanotube', name: 'Carbon Nanotube Bundle', category: 'component', ingredients: [{ itemId: 'lead', type: 'ingot', quantity: 2 }, { itemId: 'carbon_film', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Molecular-scale wire' },
+// Tier 2: Structured Parts (16-30)
+const tier2Components: CraftingRecipe[] = [
+  { id: 'reinforced_frame', name: 'Reinforced Frame', category: 'component', ingredients: [{ itemId: 'basic_frame', type: 'item', quantity: 1 }, { itemId: 'reinforced_plate', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Heavy-duty structural frame' },
+  { id: 'gear_assembly', name: 'Gear Assembly', category: 'component', ingredients: [{ itemId: 'small_gear', type: 'item', quantity: 3 }, { itemId: 'metal_rod', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Interlocking gear system' },
+  { id: 'shaft_component', name: 'Shaft Component', category: 'component', ingredients: [{ itemId: 'metal_rod', type: 'item', quantity: 2 }, { itemId: 'quartz', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Precision rotation shaft' },
+  { id: 'bearing_unit', name: 'Bearing Unit', category: 'component', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 2 }, { itemId: 'chromite', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Low-friction bearing' },
+  { id: 'mechanical_joint', name: 'Mechanical Joint', category: 'component', ingredients: [{ itemId: 'metal_rod', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 1 }, { itemId: 'spring_coil', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Articulating connection' },
+  { id: 'structural_panel', name: 'Structural Panel', category: 'component', ingredients: [{ itemId: 'metal_plate', type: 'item', quantity: 2 }, { itemId: 'magnetite', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Reinforced flat panel' },
+  { id: 'cable_harness', name: 'Cable Harness', category: 'component', ingredients: [{ itemId: 'wire_bundle', type: 'item', quantity: 2 }, { itemId: 'insulated_layer', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Organized cable assembly' },
+  { id: 'insulated_panel', name: 'Insulated Panel', category: 'component', ingredients: [{ itemId: 'structural_panel', type: 'item', quantity: 1 }, { itemId: 'insulated_layer', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Heat-shielded panel' },
+  { id: 'connector_array', name: 'Connector Array', category: 'component', ingredients: [{ itemId: 'connector_piece', type: 'item', quantity: 3 }, { itemId: 'contact_pin', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Multi-pin connector block' },
+  { id: 'mounting_bracket', name: 'Mounting Bracket', category: 'component', ingredients: [{ itemId: 'metal_plate', type: 'item', quantity: 1 }, { itemId: 'bolt_pack', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'Universal mounting hardware' },
+  { id: 'rotary_component', name: 'Rotary Component', category: 'component', ingredients: [{ itemId: 'gear_assembly', type: 'item', quantity: 1 }, { itemId: 'bearing_unit', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Rotating mechanism core' },
+  { id: 'pressure_seal', name: 'Pressure Seal', category: 'component', ingredients: [{ itemId: 'lead', type: 'ingot', quantity: 2 }, { itemId: 'graphite', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Airtight seal ring' },
+  { id: 'compact_housing', name: 'Compact Housing', category: 'component', ingredients: [{ itemId: 'basic_housing', type: 'item', quantity: 1 }, { itemId: 'screw_set', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Small protective enclosure' },
+  { id: 'support_frame', name: 'Support Frame', category: 'component', ingredients: [{ itemId: 'basic_frame', type: 'item', quantity: 1 }, { itemId: 'mounting_bracket', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Elevated support structure' },
+  { id: 'alignment_module', name: 'Alignment Module', category: 'component', ingredients: [{ itemId: 'shaft_component', type: 'item', quantity: 1 }, { itemId: 'bearing_unit', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision alignment device' },
+];
 
-  // Advanced Components (Tier 4-5)
-  { id: 'quantum_dot', name: 'Quantum Dot', category: 'component', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 3 }, { itemId: 'rare_earth_magnet', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Nanoscale light emitter' },
-  { id: 'graphene_sheet', name: 'Graphene Sheet', category: 'component', ingredients: [{ itemId: 'carbon_film', type: 'item', quantity: 3 }], outputQuantity: 1, description: 'Single-atom-thick carbon lattice' },
-  { id: 'superconductor', name: 'Superconductor Wire', category: 'component', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 4 }, { itemId: 'gold_wire', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Zero-resistance conductor' },
-  { id: 'holographic_matrix', name: 'Holographic Matrix', category: 'component', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 3 }, { itemId: 'crystal_oscillator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Three-dimensional data storage' },
-  { id: 'ion_channel', name: 'Ion Channel', category: 'component', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 2 }, { itemId: 'electrolyte_solution', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Ionic transport device' },
+// Tier 3: Precision Components (31-50)
+const tier3Components: CraftingRecipe[] = [
+  { id: 'precision_gear', name: 'Precision Gear', category: 'component', ingredients: [{ itemId: 'small_gear', type: 'item', quantity: 2 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Ultra-fine toothed gear' },
+  { id: 'micro_connector', name: 'Micro Connector', category: 'component', ingredients: [{ itemId: 'contact_pin', type: 'item', quantity: 2 }, { itemId: 'gold', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'Miniature electrical connector' },
+  { id: 'fine_wiring', name: 'Fine Wiring Bundle', category: 'component', ingredients: [{ itemId: 'wire_bundle', type: 'item', quantity: 1 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 3, description: 'High-conductivity thin wire' },
+  { id: 'signal_contact', name: 'Signal Contact', category: 'component', ingredients: [{ itemId: 'micro_connector', type: 'item', quantity: 1 }, { itemId: 'gold', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Low-noise signal interface' },
+  { id: 'micro_frame', name: 'Micro Frame', category: 'component', ingredients: [{ itemId: 'aluminum', type: 'ingot', quantity: 3 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Miniature structural frame' },
+  { id: 'compact_gearbox', name: 'Compact Gearbox', category: 'component', ingredients: [{ itemId: 'precision_gear', type: 'item', quantity: 2 }, { itemId: 'shaft_component', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Small multi-gear assembly' },
+  { id: 'stabilizer_unit', name: 'Stabilizer Unit', category: 'component', ingredients: [{ itemId: 'spring_coil', type: 'item', quantity: 2 }, { itemId: 'bearing_unit', type: 'item', quantity: 1 }, { itemId: 'cobalt', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Vibration dampening device' },
+  { id: 'control_housing', name: 'Control Housing', category: 'component', ingredients: [{ itemId: 'compact_housing', type: 'item', quantity: 1 }, { itemId: 'insulated_panel', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Shielded electronics enclosure' },
+  { id: 'modular_frame', name: 'Modular Frame', category: 'component', ingredients: [{ itemId: 'reinforced_frame', type: 'item', quantity: 1 }, { itemId: 'mounting_bracket', type: 'item', quantity: 2 }, { itemId: 'tungsten', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Reconfigurable frame system' },
+  { id: 'thermal_plate', name: 'Thermal Plate', category: 'component', ingredients: [{ itemId: 'metal_plate', type: 'item', quantity: 1 }, { itemId: 'copper', type: 'ingot', quantity: 3 }, { itemId: 'silver', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Heat-dissipating plate' },
+  { id: 'energy_channel', name: 'Energy Channel', category: 'component', ingredients: [{ itemId: 'wire_bundle', type: 'item', quantity: 2 }, { itemId: 'quartz', type: 'ingot', quantity: 2 }, { itemId: 'lithium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Directed energy conduit' },
+  { id: 'contact_matrix', name: 'Contact Matrix', category: 'component', ingredients: [{ itemId: 'connector_array', type: 'item', quantity: 1 }, { itemId: 'signal_contact', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'High-density contact grid' },
+  { id: 'data_interface_base', name: 'Data Interface Base', category: 'component', ingredients: [{ itemId: 'contact_matrix', type: 'item', quantity: 1 }, { itemId: 'micro_frame', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Data bus foundation' },
+  { id: 'sensor_mount', name: 'Sensor Mount', category: 'component', ingredients: [{ itemId: 'micro_frame', type: 'item', quantity: 1 }, { itemId: 'alignment_module', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision sensor housing' },
+  { id: 'precision_shaft', name: 'Precision Shaft', category: 'component', ingredients: [{ itemId: 'shaft_component', type: 'item', quantity: 1 }, { itemId: 'platinum', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Ultra-smooth rotation axis' },
+  { id: 'reinforced_joint', name: 'Reinforced Joint', category: 'component', ingredients: [{ itemId: 'mechanical_joint', type: 'item', quantity: 1 }, { itemId: 'cobalt', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'High-stress articulation' },
+  { id: 'structural_core', name: 'Structural Core', category: 'component', ingredients: [{ itemId: 'reinforced_frame', type: 'item', quantity: 1 }, { itemId: 'reinforced_plate', type: 'item', quantity: 2 }, { itemId: 'tungsten', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Central structural element' },
+  { id: 'balance_assembly', name: 'Balance Assembly', category: 'component', ingredients: [{ itemId: 'stabilizer_unit', type: 'item', quantity: 1 }, { itemId: 'precision_gear', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Dynamic balance mechanism' },
+  { id: 'micro_housing', name: 'Micro Housing', category: 'component', ingredients: [{ itemId: 'compact_housing', type: 'item', quantity: 1 }, { itemId: 'gold', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Precious-metal lined case' },
+  { id: 'compact_assembly', name: 'Compact Assembly', category: 'component', ingredients: [{ itemId: 'micro_frame', type: 'item', quantity: 1 }, { itemId: 'compact_gearbox', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Pre-assembled miniature unit' },
+];
 
-  // Electronics (Basic)
-  { id: 'resistor', name: 'Resistor', category: 'electronic', ingredients: [{ itemId: 'ceramic_base', type: 'item', quantity: 1 }, { itemId: 'carbon_film', type: 'item', quantity: 1 }], outputQuantity: 4, description: 'Limits current flow' },
-  { id: 'capacitor', name: 'Capacitor', category: 'electronic', ingredients: [{ itemId: 'aluminum', type: 'ingot', quantity: 1 }, { itemId: 'electrolyte_solution', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'Stores electrical charge' },
-  { id: 'transistor', name: 'Transistor', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }, { itemId: 'gold_wire', type: 'item', quantity: 1 }, { itemId: 'solder', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Semiconductor switch' },
-  { id: 'diode', name: 'Diode', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }, { itemId: 'copper_trace', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'One-way current gate' },
-  { id: 'inductor', name: 'Inductor', category: 'electronic', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 3 }, { itemId: 'iron', type: 'ingot', quantity: 1 }], outputQuantity: 2, description: 'Magnetic energy storage coil' },
+// Tier 4: Industrial Components (51-70)
+const tier4Components: CraftingRecipe[] = [
+  { id: 'heavy_frame', name: 'Heavy Frame', category: 'component', ingredients: [{ itemId: 'structural_core', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 3 }], outputQuantity: 1, description: 'Industrial-grade frame' },
+  { id: 'industrial_gearbox', name: 'Industrial Gearbox', category: 'component', ingredients: [{ itemId: 'compact_gearbox', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'High-torque gear system' },
+  { id: 'reinforced_shaft', name: 'Reinforced Shaft', category: 'component', ingredients: [{ itemId: 'precision_shaft', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Unbreakable rotation axis' },
+  { id: 'load_bearing_unit', name: 'Load Bearing Unit', category: 'component', ingredients: [{ itemId: 'bearing_unit', type: 'item', quantity: 2 }, { itemId: 'iridium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Extreme-load bearing' },
+  { id: 'advanced_housing', name: 'Advanced Housing', category: 'component', ingredients: [{ itemId: 'control_housing', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Armored enclosure' },
+  { id: 'thermal_regulator', name: 'Thermal Regulator Unit', category: 'component', ingredients: [{ itemId: 'thermal_plate', type: 'item', quantity: 2 }, { itemId: 'energy_channel', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Active heat management' },
+  { id: 'energy_conduit', name: 'Energy Conduit', category: 'component', ingredients: [{ itemId: 'energy_channel', type: 'item', quantity: 2 }, { itemId: 'monazite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'High-capacity power line' },
+  { id: 'power_transfer_unit', name: 'Power Transfer Unit', category: 'component', ingredients: [{ itemId: 'energy_conduit', type: 'item', quantity: 1 }, { itemId: 'rotary_component', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Mechanical-electrical converter' },
+  { id: 'structural_matrix', name: 'Structural Matrix', category: 'component', ingredients: [{ itemId: 'structural_core', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Interconnected support grid' },
+  { id: 'machine_chassis', name: 'Machine Chassis', category: 'component', ingredients: [{ itemId: 'heavy_frame', type: 'item', quantity: 1 }, { itemId: 'structural_matrix', type: 'item', quantity: 1 }, { itemId: 'mounting_bracket', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Complete machine body' },
+  { id: 'high_tension_spring', name: 'High-Tension Spring', category: 'component', ingredients: [{ itemId: 'spring_coil', type: 'item', quantity: 2 }, { itemId: 'tungsten', type: 'ingot', quantity: 2 }], outputQuantity: 2, description: 'Extreme-force spring' },
+  { id: 'industrial_joint', name: 'Industrial Joint', category: 'component', ingredients: [{ itemId: 'reinforced_joint', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Heavy machinery articulation' },
+  { id: 'stabilized_frame', name: 'Stabilized Frame', category: 'component', ingredients: [{ itemId: 'modular_frame', type: 'item', quantity: 1 }, { itemId: 'stabilizer_unit', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Vibration-free platform' },
+  { id: 'dynamic_balancer', name: 'Dynamic Balancer', category: 'component', ingredients: [{ itemId: 'balance_assembly', type: 'item', quantity: 2 }, { itemId: 'load_bearing_unit', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Active balance system' },
+  { id: 'pressure_core', name: 'Pressure Core', category: 'component', ingredients: [{ itemId: 'pressure_seal', type: 'item', quantity: 3 }, { itemId: 'structural_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Pressurized chamber core' },
+  { id: 'flow_regulator', name: 'Flow Regulator', category: 'component', ingredients: [{ itemId: 'pressure_seal', type: 'item', quantity: 2 }, { itemId: 'precision_gear', type: 'item', quantity: 1 }, { itemId: 'cobalt', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Fluid flow controller' },
+  { id: 'cooling_assembly', name: 'Cooling Assembly', category: 'component', ingredients: [{ itemId: 'thermal_regulator', type: 'item', quantity: 1 }, { itemId: 'flow_regulator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Active cooling system' },
+  { id: 'signal_conduit', name: 'Signal Conduit', category: 'component', ingredients: [{ itemId: 'fine_wiring', type: 'item', quantity: 2 }, { itemId: 'data_interface_base', type: 'item', quantity: 1 }, { itemId: 'gold', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'High-bandwidth signal path' },
+  { id: 'reinforced_assembly', name: 'Reinforced Assembly', category: 'component', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 1 }, { itemId: 'reinforced_plate', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Hardened pre-built unit' },
+  { id: 'multi_phase_coupler', name: 'Multi-Phase Coupler', category: 'component', ingredients: [{ itemId: 'connector_array', type: 'item', quantity: 2 }, { itemId: 'energy_conduit', type: 'item', quantity: 1 }, { itemId: 'platinum', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Multi-power-phase connector' },
+];
 
-  // Electronics (Intermediate)
-  { id: 'pcb_blank', name: 'PCB (Blank)', category: 'electronic', ingredients: [{ itemId: 'fiberglass_sheet', type: 'item', quantity: 1 }, { itemId: 'copper_foil', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Unpopulated circuit board' },
-  { id: 'led', name: 'LED', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }, { itemId: 'gold_wire', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'Light-emitting diode' },
-  { id: 'photoresistor', name: 'Photoresistor', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 1 }, { itemId: 'carbon_film', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Light-sensitive resistance' },
-  { id: 'hall_effect_sensor', name: 'Hall Effect Sensor', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 2 }, { itemId: 'rare_earth_magnet', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Magnetic field detector' },
-  { id: 'strain_gauge', name: 'Strain Gauge', category: 'electronic', ingredients: [{ itemId: 'copper', type: 'ingot', quantity: 1 }, { itemId: 'carbon_film', type: 'item', quantity: 2 }], outputQuantity: 2, description: 'Mechanical stress sensor' },
-  { id: 'accelerometer', name: 'Accelerometer', category: 'electronic', ingredients: [{ itemId: 'silicon', type: 'ingot', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Motion detection sensor' },
-  { id: 'gyroscope', name: 'Gyroscope', category: 'electronic', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 2 }, { itemId: 'rare_earth_magnet', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Rotation detection sensor' },
+// Tier 5: High-Tech Components (71-85)
+const tier5Components: CraftingRecipe[] = [
+  { id: 'nano_frame', name: 'Nano Frame', category: 'component', ingredients: [{ itemId: 'micro_frame', type: 'item', quantity: 2 }, { itemId: 'diamond', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Molecular-scale structure' },
+  { id: 'precision_matrix', name: 'Precision Matrix', category: 'component', ingredients: [{ itemId: 'contact_matrix', type: 'item', quantity: 2 }, { itemId: 'emerald', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Ultra-high-density contacts' },
+  { id: 'energy_channel_core', name: 'Energy Channel Core', category: 'component', ingredients: [{ itemId: 'energy_conduit', type: 'item', quantity: 2 }, { itemId: 'ruby', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Concentrated energy path' },
+  { id: 'hyper_conductor', name: 'Hyper Conductor Assembly', category: 'component', ingredients: [{ itemId: 'fine_wiring', type: 'item', quantity: 3 }, { itemId: 'sapphire', type: 'ingot', quantity: 1 }, { itemId: 'platinum', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Near-zero-resistance conductor' },
+  { id: 'phase_coupler', name: 'Phase Coupler', category: 'component', ingredients: [{ itemId: 'multi_phase_coupler', type: 'item', quantity: 1 }, { itemId: 'alexandrite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Quantum phase alignment' },
+  { id: 'gravity_stabilizer', name: 'Gravity Stabilizer', category: 'component', ingredients: [{ itemId: 'dynamic_balancer', type: 'item', quantity: 1 }, { itemId: 'painite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Gravitational compensation' },
+  { id: 'fusion_housing', name: 'Fusion Housing', category: 'component', ingredients: [{ itemId: 'advanced_housing', type: 'item', quantity: 1 }, { itemId: 'diamond', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Fusion-containment casing' },
+  { id: 'energy_transfer_core', name: 'Energy Transfer Core', category: 'component', ingredients: [{ itemId: 'power_transfer_unit', type: 'item', quantity: 1 }, { itemId: 'energy_channel_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Lossless energy transfer' },
+  { id: 'high_density_assembly', name: 'High-Density Assembly', category: 'component', ingredients: [{ itemId: 'reinforced_assembly', type: 'item', quantity: 1 }, { itemId: 'benitoite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Compressed functional unit' },
+  { id: 'smart_structural_frame', name: 'Smart Structural Frame', category: 'component', ingredients: [{ itemId: 'stabilized_frame', type: 'item', quantity: 1 }, { itemId: 'signal_conduit', type: 'item', quantity: 1 }, { itemId: 'taaffeite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Self-monitoring frame' },
+  { id: 'advanced_coupling', name: 'Advanced Coupling Unit', category: 'component', ingredients: [{ itemId: 'multi_phase_coupler', type: 'item', quantity: 1 }, { itemId: 'hyper_conductor', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Multi-dimensional coupling' },
+  { id: 'energy_compression', name: 'Energy Compression Module', category: 'component', ingredients: [{ itemId: 'energy_transfer_core', type: 'item', quantity: 1 }, { itemId: 'pressure_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Compresses energy density' },
+  { id: 'nano_gear_system', name: 'Nano Gear System', category: 'component', ingredients: [{ itemId: 'compact_gearbox', type: 'item', quantity: 1 }, { itemId: 'nano_frame', type: 'item', quantity: 1 }, { itemId: 'diamond', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Molecular-scale gears' },
+  { id: 'stabilization_core', name: 'Stabilization Core', category: 'component', ingredients: [{ itemId: 'gravity_stabilizer', type: 'item', quantity: 1 }, { itemId: 'structural_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Central stability nexus' },
+  { id: 'high_precision_housing', name: 'High-Precision Housing', category: 'component', ingredients: [{ itemId: 'fusion_housing', type: 'item', quantity: 1 }, { itemId: 'nano_frame', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Ultimate protective case' },
+];
+
+// Tier 6: Quantum Components (86-95)
+const tier6Components: CraftingRecipe[] = [
+  { id: 'quantum_frame', name: 'Quantum Frame', category: 'component', ingredients: [{ itemId: 'nano_frame', type: 'item', quantity: 2 }, { itemId: 'californium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Quantum-stable structure' },
+  { id: 'entanglement_housing', name: 'Entanglement Housing', category: 'component', ingredients: [{ itemId: 'high_precision_housing', type: 'item', quantity: 1 }, { itemId: 'neptunium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Entangled particle container' },
+  { id: 'phase_alignment_core', name: 'Phase Alignment Core', category: 'component', ingredients: [{ itemId: 'phase_coupler', type: 'item', quantity: 2 }, { itemId: 'plutonium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Quantum phase synchronizer' },
+  { id: 'time_stable_assembly', name: 'Time-Stable Assembly', category: 'component', ingredients: [{ itemId: 'stabilization_core', type: 'item', quantity: 1 }, { itemId: 'francium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Temporally locked unit' },
+  { id: 'dimensional_coupler', name: 'Dimensional Coupler', category: 'component', ingredients: [{ itemId: 'advanced_coupling', type: 'item', quantity: 1 }, { itemId: 'actinium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Cross-dimensional connector' },
+  { id: 'quantum_channel', name: 'Quantum Channel', category: 'component', ingredients: [{ itemId: 'energy_channel_core', type: 'item', quantity: 1 }, { itemId: 'protactinium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Quantum energy pathway' },
+  { id: 'energy_singularity_housing', name: 'Energy Singularity Housing', category: 'component', ingredients: [{ itemId: 'fusion_housing', type: 'item', quantity: 1 }, { itemId: 'scandium', type: 'ingot', quantity: 1 }, { itemId: 'energy_compression', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Singularity containment' },
+  { id: 'reality_stabilizer', name: 'Reality Stabilizer', category: 'component', ingredients: [{ itemId: 'gravity_stabilizer', type: 'item', quantity: 1 }, { itemId: 'yttrium', type: 'ingot', quantity: 1 }, { itemId: 'time_stable_assembly', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Fabric-of-reality anchor' },
+  { id: 'quantum_structural_matrix', name: 'Quantum Structural Matrix', category: 'component', ingredients: [{ itemId: 'structural_matrix', type: 'item', quantity: 1 }, { itemId: 'quantum_frame', type: 'item', quantity: 1 }, { itemId: 'lanthanum', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Quantum-reinforced grid' },
+  { id: 'temporal_stabilizer', name: 'Temporal Stabilizer Unit', category: 'component', ingredients: [{ itemId: 'reality_stabilizer', type: 'item', quantity: 1 }, { itemId: 'cerium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Time-flow regulator' },
+];
+
+// Tier 7: Void / Crystalix (96-100)
+const tier7Components: CraftingRecipe[] = [
+  { id: 'veinite_core', name: 'Veinite Structural Core', category: 'component', ingredients: [{ itemId: 'structural_matrix', type: 'item', quantity: 1 }, { itemId: 'veinite', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Living structure core' },
+  { id: 'void_frame', name: 'Void Frame', category: 'component', ingredients: [{ itemId: 'quantum_frame', type: 'item', quantity: 1 }, { itemId: 'void_crystal', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Null-space frame' },
+  { id: 'entropy_assembly', name: 'Entropy Assembly', category: 'component', ingredients: [{ itemId: 'time_stable_assembly', type: 'item', quantity: 1 }, { itemId: 'entropy_shard', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Entropy-harnessing unit' },
+  { id: 'dark_matter_housing', name: 'Dark Matter Housing', category: 'component', ingredients: [{ itemId: 'entanglement_housing', type: 'item', quantity: 1 }, { itemId: 'dark_matter', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Dark matter containment' },
+  { id: 'singularity_chassis', name: 'Singularity Chassis', category: 'component', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'singularity', type: 'ingot', quantity: 2 }, { itemId: 'void_frame', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Ultimate machine body' },
+];
+
+// ─── Electronics ─────────────────────────────────────────────────────────────
+const electronics: CraftingRecipe[] = [
+  // Basic Electronics
+  { id: 'resistor', name: 'Resistor', category: 'electronic', ingredients: [{ itemId: 'insulated_layer', type: 'item', quantity: 1 }, { itemId: 'graphite', type: 'ingot', quantity: 1 }], outputQuantity: 4, description: 'Limits current flow' },
+  { id: 'capacitor', name: 'Capacitor', category: 'electronic', ingredients: [{ itemId: 'metal_plate', type: 'item', quantity: 1 }, { itemId: 'energy_channel', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'Stores electrical charge' },
+  { id: 'transistor', name: 'Transistor', category: 'electronic', ingredients: [{ itemId: 'quartz', type: 'ingot', quantity: 1 }, { itemId: 'fine_wiring', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Semiconductor switch' },
+  { id: 'diode', name: 'Diode', category: 'electronic', ingredients: [{ itemId: 'quartz', type: 'ingot', quantity: 1 }, { itemId: 'contact_pin', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'One-way current gate' },
+  { id: 'inductor', name: 'Inductor', category: 'electronic', ingredients: [{ itemId: 'wire_bundle', type: 'item', quantity: 2 }, { itemId: 'rotary_component', type: 'item', quantity: 1 }], outputQuantity: 2, description: 'Magnetic energy storage coil' },
+
+  // Intermediate Electronics
+  { id: 'pcb_blank', name: 'PCB (Blank)', category: 'electronic', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'wire_bundle', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Unpopulated circuit board' },
+  { id: 'led', name: 'LED', category: 'electronic', ingredients: [{ itemId: 'quartz', type: 'ingot', quantity: 1 }, { itemId: 'fine_wiring', type: 'item', quantity: 1 }], outputQuantity: 3, description: 'Light-emitting diode' },
   { id: 'signal_amplifier', name: 'Signal Amplifier', category: 'electronic', ingredients: [{ itemId: 'transistor', type: 'item', quantity: 3 }, { itemId: 'resistor', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Boosts signal strength' },
-  { id: 'adc_converter', name: 'ADC Converter', category: 'electronic', ingredients: [{ itemId: 'capacitor', type: 'item', quantity: 4 }, { itemId: 'transistor', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Analog to digital converter' },
-  { id: 'microcontroller', name: 'Microcontroller', category: 'electronic', ingredients: [{ itemId: 'silicon_wafer', type: 'item', quantity: 1 }, { itemId: 'transistor', type: 'item', quantity: 6 }, { itemId: 'memory_module', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'lithography_machine', description: 'Simple programmable processor' },
-  { id: 'fpga_chip', name: 'FPGA Chip', category: 'electronic', ingredients: [{ itemId: 'silicon_wafer', type: 'item', quantity: 1 }, { itemId: 'transistor', type: 'item', quantity: 12 }, { itemId: 'gold_trace', type: 'item', quantity: 2 }], outputQuantity: 1, requiredMachine: 'lithography_machine', description: 'Reconfigurable logic array' },
-  { id: 'radio_transceiver', name: 'Radio Transceiver', category: 'electronic', ingredients: [{ itemId: 'crystal_oscillator', type: 'item', quantity: 1 }, { itemId: 'signal_amplifier', type: 'item', quantity: 2 }, { itemId: 'inductor', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Wireless communication module' },
-
-  // Electronics (Advanced)
-  { id: 'logic_controller', name: 'Logic Controller', category: 'electronic', ingredients: [{ itemId: 'pcb_blank', type: 'item', quantity: 1 }, { itemId: 'transistor', type: 'item', quantity: 4 }, { itemId: 'gold_wire', type: 'item', quantity: 1 }, { itemId: 'solder', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Programmable logic unit' },
-  { id: 'processor', name: 'Processor', category: 'electronic', ingredients: [{ itemId: 'silicon_wafer', type: 'item', quantity: 1 }, { itemId: 'gold_trace', type: 'item', quantity: 2 }, { itemId: 'transistor', type: 'item', quantity: 8 }, { itemId: 'solder', type: 'item', quantity: 4 }], outputQuantity: 1, requiredMachine: 'lithography_machine', description: 'Advanced computation unit' },
-  { id: 'memory_module', name: 'Memory Module', category: 'electronic', ingredients: [{ itemId: 'pcb_blank', type: 'item', quantity: 1 }, { itemId: 'capacitor', type: 'item', quantity: 8 }, { itemId: 'transistor', type: 'item', quantity: 4 }, { itemId: 'solder', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'DRAM storage module' },
-  { id: 'power_regulator', name: 'Power Regulator', category: 'electronic', ingredients: [{ itemId: 'inductor', type: 'item', quantity: 2 }, { itemId: 'capacitor', type: 'item', quantity: 2 }, { itemId: 'diode', type: 'item', quantity: 2 }, { itemId: 'resistor', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Voltage regulation circuit' },
-  { id: 'gpu_core', name: 'GPU Core', category: 'electronic', ingredients: [{ itemId: 'silicon_wafer', type: 'item', quantity: 2 }, { itemId: 'transistor', type: 'item', quantity: 16 }, { itemId: 'memory_module', type: 'item', quantity: 2 }, { itemId: 'heat_sink', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'advanced_fab', description: 'Graphics processing unit' },
-  { id: 'neural_accelerator', name: 'Neural Accelerator', category: 'electronic', ingredients: [{ itemId: 'fpga_chip', type: 'item', quantity: 2 }, { itemId: 'processor', type: 'item', quantity: 1 }, { itemId: 'memory_module', type: 'item', quantity: 3 }], outputQuantity: 1, requiredMachine: 'quantum_lab', description: 'AI computation module' },
-  { id: 'quantum_gate', name: 'Quantum Gate', category: 'electronic', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 3 }, { itemId: 'superconductor', type: 'item', quantity: 1 }, { itemId: 'holographic_matrix', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'quantum_lab', description: 'Quantum computation element' },
-  { id: 'biochip', name: 'Biochip', category: 'electronic', ingredients: [{ itemId: 'silicon_wafer', type: 'item', quantity: 1 }, { itemId: 'ion_channel', type: 'item', quantity: 2 }, { itemId: 'protein_scaffold', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'bio_synthesizer', description: 'Biological-silicon hybrid' },
-
-  // Machines (Basic)
-  { id: 'wafer_cutter', name: 'Wafer Cutter', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 5 }, { itemId: 'platinum', type: 'ingot', quantity: 2 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision silicon cutting tool' },
-  { id: 'lithography_machine', name: 'Lithography Machine', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 10 }, { itemId: 'gold', type: 'ingot', quantity: 5 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'UV lithography for chip fabrication' },
-  { id: 'etching_station', name: 'Etching Station', category: 'machine', ingredients: [{ itemId: 'silver', type: 'ingot', quantity: 5 }, { itemId: 'titanium', type: 'ingot', quantity: 3 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Chemical etching for PCB traces' },
-
-  // Machines (Intermediate)
-  { id: 'cnc_mill', name: 'CNC Mill', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 15 }, { itemId: 'platinum', type: 'ingot', quantity: 5 }, { itemId: 'logic_controller', type: 'item', quantity: 3 }, { itemId: 'processor', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision machining centerpiece' },
-  { id: 'injection_molder', name: 'Injection Molder', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 12 }, { itemId: 'heat_sink', type: 'item', quantity: 3 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Polymer injection molding system' },
-  { id: '3d_printer', name: '3D Printer', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 10 }, { itemId: 'aluminum', type: 'ingot', quantity: 5 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }, { itemId: 'adc_converter', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Additive manufacturing apparatus' },
-  { id: 'laser_cutter', name: 'Laser Cutter', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 8 }, { itemId: 'gold', type: 'ingot', quantity: 3 }, { itemId: 'crystal_oscillator', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision laser cutting system' },
-  { id: 'plasma_welder', name: 'Plasma Welder', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 12 }, { itemId: 'platinum', type: 'ingot', quantity: 4 }, { itemId: 'power_regulator', type: 'item', quantity: 2 }, { itemId: 'heat_sink', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'High-temperature fusion welding' },
-  { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 10 }, { itemId: 'platinum', type: 'ingot', quantity: 3 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
-  { id: 'centrifuge', name: 'Centrifuge', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 8 }, { itemId: 'aluminum', type: 'ingot', quantity: 4 }, { itemId: 'motor_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'High-speed separation apparatus' },
-
-  // Machines (Advanced)
-  { id: 'vacuum_chamber', name: 'Vacuum Chamber', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 15 }, { itemId: 'platinum', type: 'ingot', quantity: 6 }, { itemId: 'power_regulator', type: 'item', quantity: 2 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Ultra-high vacuum environment' },
-  { id: 'clean_room', name: 'Clean Room', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 20 }, { itemId: 'platinum', type: 'ingot', quantity: 8 }, { itemId: 'microcontroller', type: 'item', quantity: 3 }, { itemId: 'logic_controller', type: 'item', quantity: 3 }], outputQuantity: 1, description: 'Particle-filtered assembly space' },
-  { id: 'quantum_processor', name: 'Quantum Processor Fab', category: 'machine', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 10 }, { itemId: 'quantum_gate', type: 'item', quantity: 3 }, { itemId: 'superconductor', type: 'item', quantity: 2 }, { itemId: 'processor', type: 'item', quantity: 2 }], outputQuantity: 1, requiredMachine: 'quantum_lab', description: 'Quantum computer manufacturing' },
-  { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 25 }, { itemId: 'gold', type: 'ingot', quantity: 10 }, { itemId: 'platinum', type: 'ingot', quantity: 5 }, { itemId: 'microcontroller', type: 'item', quantity: 4 }, { itemId: 'gpu_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
-  { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 15 }, { itemId: 'superconductor', type: 'item', quantity: 3 }, { itemId: 'holographic_matrix', type: 'item', quantity: 2 }, { itemId: 'neural_accelerator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Quantum research facility' },
-  { id: 'bio_synthesizer', name: 'Bio Synthesizer', category: 'machine', ingredients: [{ itemId: 'titanium', type: 'ingot', quantity: 12 }, { itemId: 'ion_channel', type: 'item', quantity: 3 }, { itemId: 'microcontroller', type: 'item', quantity: 2 }, { itemId: 'adc_converter', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Biological molecule synthesis' },
-
-  // Utility Items
   { id: 'motor_controller', name: 'Motor Controller', category: 'electronic', ingredients: [{ itemId: 'transistor', type: 'item', quantity: 4 }, { itemId: 'capacitor', type: 'item', quantity: 2 }, { itemId: 'diode', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Speed and direction control' },
-  { id: 'protein_scaffold', name: 'Protein Scaffold', category: 'component', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 1 }, { itemId: 'carbon_nanotube', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Biological structure template' },
+  { id: 'power_regulator', name: 'Power Regulator', category: 'electronic', ingredients: [{ itemId: 'inductor', type: 'item', quantity: 2 }, { itemId: 'capacitor', type: 'item', quantity: 2 }, { itemId: 'diode', type: 'item', quantity: 2 }, { itemId: 'resistor', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Voltage regulation circuit' },
+
+  // Advanced Electronics
+  { id: 'logic_controller', name: 'Logic Controller', category: 'electronic', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'contact_pin', type: 'item', quantity: 4 }, { itemId: 'fine_wiring', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Programmable logic unit' },
+  { id: 'memory_module', name: 'Memory Module', category: 'electronic', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'metal_plate', type: 'item', quantity: 8 }, { itemId: 'contact_pin', type: 'item', quantity: 4 }, { itemId: 'fastener_set', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'DRAM storage module' },
+  { id: 'processor', name: 'Processor', category: 'electronic', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 1 }, { itemId: 'signal_contact', type: 'item', quantity: 2 }, { itemId: 'contact_pin', type: 'item', quantity: 8 }, { itemId: 'fastener_set', type: 'item', quantity: 4 }], outputQuantity: 1, requiredMachine: 'lithography_machine', description: 'Advanced computation unit' },
+  { id: 'microcontroller', name: 'Microcontroller', category: 'electronic', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 1 }, { itemId: 'transistor', type: 'item', quantity: 6 }, { itemId: 'memory_module', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'lithography_machine', description: 'Simple programmable processor' },
+  { id: 'gpu_core', name: 'GPU Core', category: 'electronic', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 2 }, { itemId: 'transistor', type: 'item', quantity: 16 }, { itemId: 'memory_module', type: 'item', quantity: 2 }, { itemId: 'cooling_assembly', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'advanced_fab', description: 'Graphics processing unit' },
+  { id: 'quantum_gate', name: 'Quantum Gate', category: 'electronic', ingredients: [{ itemId: 'platinum', type: 'ingot', quantity: 3 }, { itemId: 'hyper_conductor', type: 'item', quantity: 1 }, { itemId: 'energy_channel_core', type: 'item', quantity: 1 }], outputQuantity: 1, requiredMachine: 'quantum_lab', description: 'Quantum computation element' },
+];
+
+// ─── Machines ────────────────────────────────────────────────────────────────
+const machines: CraftingRecipe[] = [
+  // Basic Machines
+  { id: 'wafer_cutter', name: 'Wafer Cutter', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'precision_shaft', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision silicon cutting tool' },
+  { id: 'lithography_machine', name: 'Lithography Machine', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'signal_conduit', type: 'item', quantity: 2 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'UV lithography for chip fabrication' },
+  { id: 'etching_station', name: 'Etching Station', category: 'machine', ingredients: [{ itemId: 'heavy_frame', type: 'item', quantity: 1 }, { itemId: 'flow_regulator', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Chemical etching for PCB traces' },
+
+  // Intermediate Machines
+  { id: 'cnc_mill', name: 'CNC Mill', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'industrial_gearbox', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 3 }, { itemId: 'processor', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision machining centerpiece' },
+  { id: 'laser_cutter', name: 'Laser Cutter', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'energy_channel_core', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision laser cutting system' },
+  { id: 'plasma_welder', name: 'Plasma Welder', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'thermal_regulator', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'High-temperature fusion welding' },
+  { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'pressure_core', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
+  { id: 'centrifuge', name: 'Centrifuge', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'dynamic_balancer', type: 'item', quantity: 1 }, { itemId: 'motor_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'High-speed separation apparatus' },
+
+  // Advanced Machines
+  { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [{ itemId: 'singularity_chassis', type: 'item', quantity: 1 }, { itemId: 'precision_matrix', type: 'item', quantity: 1 }, { itemId: 'microcontroller', type: 'item', quantity: 4 }, { itemId: 'gpu_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
+  { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [{ itemId: 'singularity_chassis', type: 'item', quantity: 1 }, { itemId: 'quantum_structural_matrix', type: 'item', quantity: 1 }, { itemId: 'hyper_conductor', type: 'item', quantity: 3 }], outputQuantity: 1, description: 'Quantum research facility' },
+];
+
+// ─── Combined Recipe List ────────────────────────────────────────────────────
+export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  ...tier1Components,
+  ...tier2Components,
+  ...tier3Components,
+  ...tier4Components,
+  ...tier5Components,
+  ...tier6Components,
+  ...tier7Components,
+  ...electronics,
+  ...machines,
 ];
 
 export const RECIPE_MAP: Record<string, CraftingRecipe> = {};

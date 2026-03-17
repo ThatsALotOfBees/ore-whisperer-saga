@@ -8,9 +8,10 @@ export function getRarityFromOre(oreRarity: OreRarity): ItemRarity {
     'common': 'common',
     'uncommon': 'uncommon',
     'rare': 'rare',
+    'epic': 'epic',
+    'legendary': 'legendary',
+    'mythic': 'mythic',
     'exotic': 'exotic',
-    'radioactive': 'legendary',
-    'void': 'legendary',
   };
   return rarityMap[oreRarity];
 }
@@ -26,14 +27,14 @@ export function getItemRarity(itemId: string, recipes: typeof RECIPE_MAP, ores: 
   const maxIngredientRarity = recipe.ingredients
     .map(ing => getItemRarity(ing.itemId, recipes, ores))
     .reduce((max, curr) => {
-      const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'exotic'];
+      const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic'];
       return rarityOrder.indexOf(curr) > rarityOrder.indexOf(max) ? curr : max;
     }, 'common' as ItemRarity);
 
   if (recipe.requiredMachine) {
-    const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'exotic'];
+    const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic'];
     const machineIndex = rarityOrder.indexOf(maxIngredientRarity);
-    return rarityOrder[Math.min(machineIndex + 1, 5)];
+    return rarityOrder[Math.min(machineIndex + 1, 6)];
   }
 
   return maxIngredientRarity;
