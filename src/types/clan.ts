@@ -6,7 +6,7 @@ export type ClanContribution = Database['public']['Tables']['clan_contribution']
 export type ClanPerk = Database['public']['Tables']['clan_perks']['Row'];
 
 export type ItemType = 'ore' | 'refined' | 'ingot' | 'component' | 'electronic' | 'machine';
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'exotic';
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic';
 
 export interface RequestLimitConfig {
   [key in ItemRarity]: {
@@ -21,7 +21,8 @@ export const REQUEST_LIMITS: RequestLimitConfig = {
   rare: { maxQuantity: 25, cooldownMinutes: 60 },
   epic: { maxQuantity: 10, cooldownMinutes: 90 },
   legendary: { maxQuantity: 3, cooldownMinutes: 120 },
-  exotic: { maxQuantity: 1, cooldownMinutes: 120 },
+  mythic: { maxQuantity: 2, cooldownMinutes: 150 },
+  exotic: { maxQuantity: 1, cooldownMinutes: 180 },
 };
 
 export const RARITY_DONATION_BONUS: Record<ItemRarity, number> = {
@@ -30,7 +31,8 @@ export const RARITY_DONATION_BONUS: Record<ItemRarity, number> = {
   rare: 2.5,
   epic: 5,
   legendary: 10,
-  exotic: 25,
+  mythic: 20,
+  exotic: 40,
 };
 
 export interface ClanPerkEffect {
