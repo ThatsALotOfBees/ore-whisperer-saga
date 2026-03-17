@@ -16,7 +16,22 @@ export function Foundry() {
     return () => clearInterval(interval);
   }, [state.smeltingJobs.length]);
 
-  const handleSmelt = () => {
+  const handleSmeltAll = () => {
+    if (!selectedOre) return;
+    const ore = ORE_MAP[selectedOre];
+    if (!ore || state.foundryTier < ore.minSmeltTier) return;
+
+    const source = useRefined ? state.refinedOres : state.ores;
+    const available = source[selectedOre] || 0;
+    const freeSlots = foundry.slots - state.smeltingJobs.length;
+    const toSmelt = Math.min(available, freeSlots);
+
+    for (let i = 0; i < toSmelt; i++) {
+      dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
+    }
+  };
+
+  const handleSmeltOne = () => {
     if (!selectedOre) return;
     dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
   };
@@ -145,13 +160,22 @@ export function Foundry() {
           maxHeight="25vh"
         />
 
-        <button
-          onClick={handleSmelt}
-          disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
-          className="w-full font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
-        >
-          Start Smelting
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSmeltOne}
+            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+          >
+            Smelt 1
+          </button>
+          <button
+            onClick={handleSmeltAll}
+            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+          >
+            Smelt All
+          </button>
+        </div>
       </div>
 
       {/* Foundry Upgrade */}
