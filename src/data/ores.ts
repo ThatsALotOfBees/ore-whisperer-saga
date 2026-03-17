@@ -28,7 +28,9 @@ const rareEarthNames = [
   'Neodymium', 'Terbium', 'Dysprosium', 'Cerium', 'Lanthanum',
   'Praseodymium', 'Samarium', 'Europium', 'Gadolinium', 'Holmium',
   'Erbium', 'Thulium', 'Ytterbium', 'Lutetium', 'Yttrium',
-  'Scandium', 'Promethium', 'Hafnium', 'Tantalum', 'Niobium',
+  'Scandium', 'Hafnium', 'Tantalum', 'Niobium', 'Molybdenum',
+  'Tungsten', 'Rhenium', 'Technetium', 'Ruthenium', 'Osmium',
+  'Palladium', 'Iridium', 'Cobalt', 'Nickel', 'Chromium',
 ];
 
 const radioactiveNames = [
@@ -50,7 +52,7 @@ const rareEarths: Ore[] = rareEarthNames.map((name, i) => ({
   id: name.toLowerCase(),
   name,
   rarity: 'exotic' as OreRarity,
-  miningChance: 0.015 - (i * 0.0005),
+  miningChance: 0.004 - (i * 0.00008),
   smeltYield: 1,
   refineMultiplier: 2.2,
   refineCost: 40 + i * 5,
@@ -61,7 +63,7 @@ const radioactives: Ore[] = radioactiveNames.map((name, i) => ({
   id: name.toLowerCase(),
   name,
   rarity: 'radioactive' as OreRarity,
-  miningChance: 0.008 - (i * 0.0005),
+  miningChance: 0.002 - (i * 0.00008),
   smeltYield: 1,
   refineMultiplier: 2.5,
   refineCost: 80 + i * 15,
@@ -75,9 +77,9 @@ for (const prefix of voidPrefixes) {
     if (voidIndex >= 70) break;
     voidOres.push({
       id: `${prefix.toLowerCase()}_${suffix.toLowerCase()}`,
-      name: `${prefix}-${suffix}`,
+      name: `${prefix} ${suffix}`,
       rarity: 'void',
-      miningChance: 0.005 - (voidIndex * 0.00003),
+      miningChance: 0.0008 - (voidIndex * 0.000005),
       smeltYield: 1,
       refineMultiplier: 3.0,
       refineCost: 100 + voidIndex * 8,

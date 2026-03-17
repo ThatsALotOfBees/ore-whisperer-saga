@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { DonationPanel } from '@/components/game/DonationPanel';
+
+type TabType = 'clans' | 'donations';
 
 interface Clan {
   id: string;
@@ -15,6 +18,7 @@ interface Clan {
 
 export function ClansPanel() {
   const { user, profile, refreshProfile } = useAuth();
+  const [tab, setTab] = useState<TabType>('clans');
   const [clans, setClans] = useState<Clan[]>([]);
   const [members, setMembers] = useState<{ username: string; display_name: string | null; total_mined: number | null }[]>([]);
   const [showCreate, setShowCreate] = useState(false);
@@ -104,19 +108,44 @@ export function ClansPanel() {
 
   const myClan = clans.find(c => c.id === profile?.clan_id);
 
+  const tabs: { key: TabType; label: string }[] = [
+    { key: 'clans', label: 'Clans' },
+    ...(profile?.clan_id ? [{ key: 'donations', label: 'Donations' }] : []),
+  ];
+
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Clans</h2>
-        {!profile?.clan_id && user && (
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="font-mono-game text-[10px] uppercase px-3 py-1 border border-accent text-accent hover:bg-accent/10 transition-colors"
-          >
-            {showCreate ? 'Cancel' : 'Create Clan'}
-          </button>
-        )}
-      </div>
+    <div>
+      {tab === 'donations' ? (
+        <DonationPanel />
+      ) : (
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Clans</h2>
+            {!profile?.clan_id && user && (
+              <button
+                onClick={() => setShowCreate(!showCreate)}
+                className="font-mono-game text-[10px] uppercase px-3 py-1 border border-accent text-accent hover:bg-accent/10 transition-colors"
+              >
+                {showCreate ? 'Cancel' : 'Create Clan'}
+              </button>
+            )}
+          </div>
+
+          {tabs.length > 1 && (
+            <div className="flex gap-1">
+              {tabs.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`font-mono-game text-[10px] uppercase tracking-wider px-3 py-1.5 border transition-colors ${
+                    tab === t.key ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
       {!user && (
         <p className="text-xs text-muted-foreground/50 text-center py-8">Login to join or create clans</p>
@@ -211,6 +240,8 @@ export function ClansPanel() {
           <p className="text-xs text-muted-foreground/50 text-center py-4">No clans yet. Create the first one!</p>
         )}
       </div>
+    </div>
+      )}
     </div>
   );
 }

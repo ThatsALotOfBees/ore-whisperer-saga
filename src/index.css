@@ -79,19 +79,42 @@
   .text-rarity-common { color: hsl(var(--ore-common)); }
   .text-rarity-uncommon { color: hsl(var(--ore-uncommon)); }
   .text-rarity-rare { color: hsl(var(--ore-rare)); }
+  .text-rarity-epic { color: hsl(280 100% 60%); }
+  .text-rarity-legendary { color: hsl(100 100% 40%); }
   .text-rarity-exotic { color: hsl(var(--ore-exotic)); }
   .text-rarity-void { color: hsl(var(--ore-void)); }
   .text-rarity-radioactive { color: hsl(var(--ore-radioactive)); }
   .bg-rarity-common { background-color: hsl(var(--ore-common) / 0.15); }
   .bg-rarity-uncommon { background-color: hsl(var(--ore-uncommon) / 0.15); }
   .bg-rarity-rare { background-color: hsl(var(--ore-rare) / 0.15); }
+  .bg-rarity-epic { background-color: hsl(280 100% 60% / 0.15); }
+  .bg-rarity-legendary { background-color: hsl(100 100% 40% / 0.15); }
   .bg-rarity-exotic { background-color: hsl(var(--ore-exotic) / 0.15); }
   .bg-rarity-void { background-color: hsl(var(--ore-void) / 0.15); }
   .bg-rarity-radioactive { background-color: hsl(var(--ore-radioactive) / 0.15); }
   .border-rarity-common { border-color: hsl(var(--ore-common) / 0.3); }
   .border-rarity-uncommon { border-color: hsl(var(--ore-uncommon) / 0.3); }
   .border-rarity-rare { border-color: hsl(var(--ore-rare) / 0.3); }
+  .border-rarity-epic { border-color: hsl(280 100% 60% / 0.3); }
+  .border-rarity-legendary { border-color: hsl(100 100% 40% / 0.3); }
   .border-rarity-exotic { border-color: hsl(var(--ore-exotic) / 0.3); }
   .border-rarity-void { border-color: hsl(var(--ore-void) / 0.3); }
   .border-rarity-radioactive { border-color: hsl(var(--ore-radioactive) / 0.3); }
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--accent) / 0.5) hsl(var(--border));
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--border));
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--accent) / 0.5);
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--accent) / 0.7);
+  }
 }
