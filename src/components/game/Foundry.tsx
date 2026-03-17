@@ -1,8 +1,7 @@
 import { useGame } from '@/hooks/useGameState';
 import { ORE_MAP } from '@/data/ores';
 import { FOUNDRY_TIERS } from '@/data/recipes';
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 
 export function Foundry() {
   const { state, dispatch, foundry } = useGame();
