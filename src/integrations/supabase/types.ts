@@ -14,7 +14,110 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          channel: string
+          content: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          content: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          content?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      clans: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          max_members: number | null
+          name: string
+          owner_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_members?: number | null
+          name: string
+          owner_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          max_members?: number | null
+          name?: string
+          owner_id?: string
+          tag?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          clan_id: string | null
+          created_at: string
+          currency: number | null
+          display_name: string | null
+          game_state: Json | null
+          id: string
+          total_mined: number | null
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          clan_id?: string | null
+          created_at?: string
+          currency?: number | null
+          display_name?: string | null
+          game_state?: Json | null
+          id?: string
+          total_mined?: number | null
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          clan_id?: string | null
+          created_at?: string
+          currency?: number | null
+          display_name?: string | null
+          game_state?: Json | null
+          id?: string
+          total_mined?: number | null
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_clan_id_fkey"
+            columns: ["clan_id"]
+            isOneToOne: false
+            referencedRelation: "clans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
