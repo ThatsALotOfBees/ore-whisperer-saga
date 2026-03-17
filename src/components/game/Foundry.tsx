@@ -7,6 +7,14 @@ export function Foundry() {
   const { state, dispatch, foundry } = useGame();
   const [selectedOre, setSelectedOre] = useState<string | null>(null);
   const [useRefined, setUseRefined] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Reactive timer for progress bars
+  useEffect(() => {
+    if (state.smeltingJobs.length === 0) return;
+    const interval = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(interval);
+  }, [state.smeltingJobs.length]);
 
   const availableOres = useRefined
     ? Object.entries(state.refinedOres).filter(([, qty]) => qty > 0)
@@ -38,7 +46,7 @@ export function Foundry() {
         <div className="grid gap-2">
           {state.smeltingJobs.map((job, i) => {
             const ore = ORE_MAP[job.oreId];
-            const elapsed = Date.now() - job.startTime;
+            const elapsed = now - job.startTime;
             const pct = Math.min(100, (elapsed / job.duration) * 100);
             return (
               <div key={i} className="border border-border bg-card px-3 py-2 rounded-sm">
@@ -47,10 +55,9 @@ export function Foundry() {
                   <span className="font-mono-game text-[10px] text-primary">{Math.floor(pct)}%</span>
                 </div>
                 <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-primary"
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.3 }}
+                  <div
+                    className="h-full bg-primary transition-all duration-100"
+                    style={{ width: `${pct}%` }}
                   />
                 </div>
               </div>
