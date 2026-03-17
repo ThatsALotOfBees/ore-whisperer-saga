@@ -46,9 +46,9 @@ function GameStateSyncer() {
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, profile, signOut, loading, isGuest } = useAuth();
 
-  if (loading) {
+  if (loading && !isGuest) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="font-mono-game text-xs text-muted-foreground animate-pulse">INITIALIZING TERMINAL...</p>
@@ -56,7 +56,7 @@ function GameContent() {
     );
   }
 
-  if (!user) {
+  if (!user && !isGuest) {
     return <AuthScreen />;
   }
 

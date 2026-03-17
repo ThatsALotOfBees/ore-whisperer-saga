@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 export function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, playAsGuest } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,6 +89,18 @@ export function AuthScreen() {
         >
           {isSignUp ? 'Already have access? Login' : 'Need access? Register'}
         </button>
+
+        <div className="border-t border-border pt-4">
+          <button
+            onClick={playAsGuest}
+            className="w-full font-mono-game text-xs uppercase tracking-wider py-2.5 border border-accent/50 text-accent hover:bg-accent/10 transition-colors"
+          >
+            Play as Guest
+          </button>
+          <p className="font-mono-game text-[9px] text-muted-foreground/50 text-center mt-2">
+            Game saves locally. No cloud sync, chat, or clans.
+          </p>
+        </div>
       </div>
     </div>
   );

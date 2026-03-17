@@ -6,11 +6,13 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isGuest: boolean;
   profile: { id: string; username: string; display_name: string | null; clan_id: string | null } | null;
   signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  playAsGuest: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -19,7 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(() => localStorage.getItem('voidmarket_guest') === 'true');
   const [profile, setProfile] = useState<AuthContextType['profile']>(null);
+
+  const playAsGuest = () => {
+    localStorage.setItem('voidmarket_guest', 'true');
+    setIsGuest(true);
+    setLoading(false);
+    setProfile({ id: 'guest', username: 'Guest Miner', display_name: 'Guest Miner', clan_id: null });
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -78,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, profile, signUp, signIn, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, loading, isGuest, profile, signUp, signIn, signOut, refreshProfile, playAsGuest }}>
       {children}
     </AuthContext.Provider>
   );
