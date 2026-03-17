@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { GameProvider } from '@/hooks/useGameState';
+import { useState, useEffect } from 'react';
+import { GameProvider, useGame } from '@/hooks/useGameState';
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { MiningStation } from '@/components/game/MiningStation';
 import { Inventory } from '@/components/game/Inventory';
 import { Foundry } from '@/components/game/Foundry';
 import { CraftingStation } from '@/components/game/CraftingStation';
 import { UpgradeShop } from '@/components/game/UpgradeShop';
+import { ChatRoom } from '@/components/game/ChatRoom';
+import { ClansPanel } from '@/components/game/ClansPanel';
+import { AuthScreen } from '@/components/game/AuthScreen';
+import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat' | 'clans';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
@@ -14,10 +19,46 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'foundry', label: 'Foundry' },
   { key: 'craft', label: 'Craft' },
   { key: 'upgrades', label: 'Upgrades' },
+  { key: 'chat', label: 'Chat' },
+  { key: 'clans', label: 'Clans' },
 ];
+
+function GameStateSyncer() {
+  const { state } = useGame();
+  const { user } = useAuth();
+
+  // Sync game state to DB periodically
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      const { lastDrop, smeltingJobs, ...saveable } = state;
+      await supabase.from('profiles').update({
+        game_state: saveable as any,
+        total_mined: state.totalMined,
+        currency: state.currency,
+      }).eq('user_id', user.id);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [user, state]);
+
+  return null;
+}
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
+  const { user, profile, signOut, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="font-mono-game text-xs text-muted-foreground animate-pulse">INITIALIZING TERMINAL...</p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -27,20 +68,26 @@ function GameContent() {
           <h1 className="font-mono-game text-sm font-bold tracking-[0.15em] uppercase text-primary">
             VOID<span className="text-accent">—</span>MARKET
           </h1>
-          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">v0.1</span>
+          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">v0.2</span>
         </div>
-        <span className="font-mono-game text-[10px] text-muted-foreground/50">
-          MIDNIGHT TERMINAL
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="font-mono-game text-[10px] text-accent">{profile?.username}</span>
+          <button
+            onClick={signOut}
+            className="font-mono-game text-[9px] text-muted-foreground hover:text-destructive transition-colors uppercase"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Nav */}
-      <nav className="border-b border-border flex">
+      <nav className="border-b border-border flex overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`font-mono-game text-[11px] uppercase tracking-[0.15em] px-5 py-2.5 border-b-2 transition-colors ${
+            className={`font-mono-game text-[11px] uppercase tracking-[0.15em] px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-primary text-primary bg-primary/5'
                 : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
@@ -58,7 +105,11 @@ function GameContent() {
         {tab === 'foundry' && <Foundry />}
         {tab === 'craft' && <CraftingStation />}
         {tab === 'upgrades' && <UpgradeShop />}
+        {tab === 'chat' && <ChatRoom />}
+        {tab === 'clans' && <ClansPanel />}
       </main>
+
+      <GameStateSyncer />
 
       {/* Footer */}
       <footer className="border-t border-border px-4 py-2 text-center">
@@ -72,8 +123,10 @@ function GameContent() {
 
 export default function Index() {
   return (
-    <GameProvider>
-      <GameContent />
-    </GameProvider>
+    <AuthProvider>
+      <GameProvider>
+        <GameContent />
+      </GameProvider>
+    </AuthProvider>
   );
 }
