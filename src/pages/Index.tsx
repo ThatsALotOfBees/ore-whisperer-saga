@@ -9,6 +9,7 @@ import { UpgradeShop } from '@/components/game/UpgradeShop';
 import { ChatRoom } from '@/components/game/ChatRoom';
 // Donations removed - dependent on Supabase tables not yet configured
 import { AuthScreen } from '@/components/game/AuthScreen';
+import { DiscordButton } from '@/components/game/DiscordButton';
 import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat';
@@ -108,6 +109,7 @@ function GameContent() {
       </main>
 
       <GameStateSyncer />
+      <DiscordButton />
 
       {/* Footer */}
       <footer className="border-t border-border px-4 py-2 text-center">
