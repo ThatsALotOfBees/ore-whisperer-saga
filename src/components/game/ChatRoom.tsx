@@ -65,7 +65,7 @@ export function ChatRoom({ channel = 'global' }: { channel?: string }) {
             .from('profiles')
             .select('username')
             .eq('user_id', msg.user_id)
-            .single();
+            .maybeSingle();
           if (data) profileCache.current[msg.user_id] = data.username;
         }
         msg.username = profileCache.current[msg.user_id] || 'unknown';
