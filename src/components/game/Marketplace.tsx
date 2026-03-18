@@ -28,12 +28,18 @@ export function Marketplace() {
   const [tab, setTab] = useState<ListTab>('browse');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Sell form
   const [sellItemId, setSellItemId] = useState('');
   const [sellItemType, setSellItemType] = useState<'ore' | 'refined' | 'ingot' | 'item'>('ore');
   const [sellQty, setSellQty] = useState(1);
   const [sellPrice, setSellPrice] = useState(10);
+
+  const showStatus = (text: string, ok: boolean) => {
+    setStatusMsg({ text, ok });
+    setTimeout(() => setStatusMsg(null), 3000);
+  };
 
   const loadListings = async () => {
     const { data } = await supabase
@@ -90,36 +96,46 @@ export function Marketplace() {
     return listings.filter(l => l.seller_id === user?.id);
   }, [listings, user]);
 
+  // Get max qty the player can list (accounting for items already listed)
+  const getAvailableQty = (itemId: string, itemType: 'ore' | 'refined' | 'ingot' | 'item') => {
+    const sellable = sellableItems.find(i => i.id === itemId && i.type === itemType);
+    return sellable?.qty ?? 0;
+  };
+
   const handleList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !profile || isGuest) return;
 
     const sellable = sellableItems.find(i => i.id === sellItemId && i.type === sellItemType);
-    if (!sellable || sellable.qty < sellQty) return;
+    if (!sellable) return;
+    if (sellable.qty < sellQty) {
+      showStatus(`Not enough ${sellable.name} in inventory`, false);
+      return;
+    }
 
     setLoading(true);
 
-    // Remove items from local state
-    dispatch({ type: 'SELL_ITEM', itemId: sellItemId, itemType: sellItemType, quantity: 0 }); // We'll handle removal manually
-    // Actually we need to deduct items without gaining currency. Let's just do the marketplace listing.
-    // For simplicity, we deduct from local state by selling at 0 value, but that's not in the reducer.
-    // Instead, we'll just create the listing. Items get deducted on confirmation.
-
-    const itemName = sellable.name;
+    // Deduct items from local inventory immediately
+    dispatch({ type: 'DEDUCT_FOR_LISTING', itemId: sellItemId, itemType: sellItemType, quantity: sellQty });
 
     const { error } = await supabase.from('marketplace_listings').insert({
       seller_id: user.id,
       seller_username: profile.username,
       item_id: sellItemId,
       item_type: sellItemType,
-      item_name: itemName,
+      item_name: sellable.name,
       quantity: sellQty,
       price_per_unit: sellPrice,
     } as any);
 
-    if (!error) {
+    if (error) {
+      // Rollback inventory deduction on failure
+      dispatch({ type: 'RETURN_FROM_LISTING', itemId: sellItemId, itemType: sellItemType, quantity: sellQty, itemName: sellable.name });
+      showStatus('Failed to create listing: ' + error.message, false);
+    } else {
       setSellQty(1);
       setSellPrice(10);
+      showStatus(`Listed ${sellQty}x ${sellable.name} for ${sellPrice.toLocaleString()} ¤ each`, true);
       await loadListings();
     }
     setLoading(false);
@@ -130,28 +146,61 @@ export function Marketplace() {
     if (listing.seller_id === user.id) return;
 
     const totalCost = listing.price_per_unit * listing.quantity;
-    if (state.currency < totalCost) return;
+    if (state.currency < totalCost) {
+      showStatus('Not enough currency', false);
+      return;
+    }
 
-    // Deactivate listing
+    setLoading(true);
+
+    // Use the SECURITY DEFINER function to atomically deactivate the listing
+    const { data, error } = await supabase.rpc('purchase_marketplace_listing', {
+      listing_id: listing.id,
+      buyer_id: user.id,
+    });
+
+    if (error || !data?.success) {
+      showStatus(data?.error || error?.message || 'Purchase failed', false);
+    } else {
+      // Apply game state changes: deduct currency and add items to inventory
+      dispatch({
+        type: 'RECEIVE_PURCHASE',
+        itemId: data.item_id,
+        itemType: data.item_type as 'ore' | 'refined' | 'ingot' | 'item',
+        quantity: data.quantity,
+        totalCost: data.total_cost,
+      });
+      showStatus(`Bought ${data.quantity}x ${data.item_name} for ${data.total_cost.toLocaleString()} ¤`, true);
+      await loadListings();
+    }
+    setLoading(false);
+  };
+
+  const handleCancel = async (listing: MarketListing) => {
+    if (!user) return;
+    setLoading(true);
+
     const { error } = await supabase
       .from('marketplace_listings')
       .update({ active: false } as any)
-      .eq('id', listing.id);
+      .eq('id', listing.id)
+      .eq('seller_id', user.id); // RLS + safety check
 
-    if (!error) {
-      // Deduct currency locally (crude but works for now)
-      // Add items to buyer's inventory would require server-side logic
-      // For now, we handle it client-side
+    if (error) {
+      showStatus('Failed to cancel listing', false);
+    } else {
+      // Return items to inventory
+      dispatch({
+        type: 'RETURN_FROM_LISTING',
+        itemId: listing.item_id,
+        itemType: listing.item_type as 'ore' | 'refined' | 'ingot' | 'item',
+        quantity: listing.quantity,
+        itemName: listing.item_name,
+      });
+      showStatus(`Cancelled listing — ${listing.quantity}x ${listing.item_name} returned`, true);
       await loadListings();
     }
-  };
-
-  const handleCancel = async (listingId: string) => {
-    await supabase
-      .from('marketplace_listings')
-      .update({ active: false } as any)
-      .eq('id', listingId);
-    await loadListings();
+    setLoading(false);
   };
 
   if (isGuest) {
@@ -166,8 +215,12 @@ export function Marketplace() {
   const tabs: { key: ListTab; label: string }[] = [
     { key: 'browse', label: 'Browse' },
     { key: 'sell', label: 'Sell' },
-    { key: 'my_listings', label: 'My Listings' },
+    { key: 'my_listings', label: `My Listings${myListings.length > 0 ? ` (${myListings.length})` : ''}` },
   ];
+
+  const selectedSellable = sellItemId
+    ? sellableItems.find(i => i.id === sellItemId && i.type === sellItemType)
+    : null;
 
   return (
     <div className="p-4 space-y-4">
@@ -175,6 +228,24 @@ export function Marketplace() {
         <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Player Market</h2>
         <span className="font-mono-game text-sm text-accent">{state.currency.toLocaleString()} ¤</span>
       </div>
+
+      {/* Status message */}
+      <AnimatePresence>
+        {statusMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className={`font-mono-game text-[10px] px-3 py-2 border rounded-sm ${
+              statusMsg.ok
+                ? 'border-accent/40 bg-accent/10 text-accent'
+                : 'border-destructive/40 bg-destructive/10 text-destructive'
+            }`}
+          >
+            {statusMsg.text}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex gap-1">
         {tabs.map(t => (
@@ -208,7 +279,7 @@ export function Marketplace() {
             <AnimatePresence>
               {filteredListings.map(listing => {
                 const totalCost = listing.price_per_unit * listing.quantity;
-                const canBuy = state.currency >= totalCost && listing.seller_id !== user?.id;
+                const canBuy = state.currency >= totalCost && listing.seller_id !== user?.id && !loading;
                 const isMine = listing.seller_id === user?.id;
 
                 return (
@@ -269,62 +340,80 @@ export function Marketplace() {
       {/* Sell */}
       {tab === 'sell' && (
         <form onSubmit={handleList} className="space-y-3">
-          <div className="space-y-2">
-            <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Select Item</label>
-            <select
-              value={`${sellItemType}:${sellItemId}`}
-              onChange={e => {
-                const [type, id] = e.target.value.split(':');
-                setSellItemType(type as any);
-                setSellItemId(id);
-              }}
-              className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
-            >
-              <option value="">-- Select Item --</option>
-              {sellableItems.map(item => (
-                <option key={`${item.type}:${item.id}`} value={`${item.type}:${item.id}`}>
-                  {item.name} (x{item.qty}) [{item.type}]
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                value={sellQty}
-                onChange={e => setSellQty(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Price/Unit (¤)</label>
-              <input
-                type="number"
-                min="1"
-                value={sellPrice}
-                onChange={e => setSellPrice(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
-              />
-            </div>
-          </div>
-
-          {sellItemId && (
-            <p className="font-mono-game text-[10px] text-accent">
-              Total listing value: {(sellQty * sellPrice).toLocaleString()} ¤
-            </p>
+          {sellableItems.length === 0 && (
+            <p className="text-xs text-muted-foreground/50 text-center py-4">No items in inventory to list.</p>
           )}
 
-          <button
-            type="submit"
-            disabled={!sellItemId || loading}
-            className="w-full font-mono-game text-[10px] uppercase py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-          >
-            {loading ? 'Listing...' : 'List for Sale'}
-          </button>
+          {sellableItems.length > 0 && (
+            <>
+              <div className="space-y-2">
+                <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Select Item</label>
+                <select
+                  value={`${sellItemType}:${sellItemId}`}
+                  onChange={e => {
+                    const [type, ...rest] = e.target.value.split(':');
+                    const id = rest.join(':');
+                    setSellItemType(type as any);
+                    setSellItemId(id);
+                    setSellQty(1);
+                  }}
+                  className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
+                >
+                  <option value=":">-- Select Item --</option>
+                  {sellableItems.map(item => (
+                    <option key={`${item.type}:${item.id}`} value={`${item.type}:${item.id}`}>
+                      {item.name} (x{item.qty}) [{item.type}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Quantity {selectedSellable ? `(max ${selectedSellable.qty})` : ''}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={selectedSellable?.qty ?? undefined}
+                    value={sellQty}
+                    onChange={e => setSellQty(Math.max(1, Math.min(selectedSellable?.qty ?? 999999, parseInt(e.target.value) || 1)))}
+                    className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Price/Unit (¤)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={sellPrice}
+                    onChange={e => setSellPrice(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground focus:outline-none focus:border-accent"
+                  />
+                </div>
+              </div>
+
+              {sellItemId && (
+                <div className="space-y-1">
+                  <p className="font-mono-game text-[10px] text-accent">
+                    Total listing value: {(sellQty * sellPrice).toLocaleString()} ¤
+                  </p>
+                  <p className="font-mono-game text-[9px] text-muted-foreground/60">
+                    Items are removed from your inventory when listed. They are returned if you cancel.
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={!sellItemId || loading || (selectedSellable ? selectedSellable.qty < sellQty : true)}
+                className="w-full font-mono-game text-[10px] uppercase py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+              >
+                {loading ? 'Listing...' : 'List for Sale'}
+              </button>
+            </>
+          )}
         </form>
       )}
 
@@ -335,16 +424,18 @@ export function Marketplace() {
             <p className="text-xs text-muted-foreground/50 text-center py-8">No active listings</p>
           )}
           {myListings.map(listing => (
-            <div key={listing.id} className="border border-border bg-card rounded-sm p-3 flex items-center justify-between">
-              <div>
-                <span className="font-mono-game text-xs text-foreground">{listing.item_name}</span>
-                <span className="font-mono-game text-[10px] text-muted-foreground ml-2">
+            <div key={listing.id} className="border border-border bg-card rounded-sm p-3 flex items-center justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="font-mono-game text-xs text-foreground block truncate">{listing.item_name}</span>
+                <span className="font-mono-game text-[10px] text-muted-foreground">
                   x{listing.quantity} @ {listing.price_per_unit.toLocaleString()} ¤
+                  <span className="text-accent ml-2">= {(listing.quantity * listing.price_per_unit).toLocaleString()} ¤</span>
                 </span>
               </div>
               <button
-                onClick={() => handleCancel(listing.id)}
-                className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={() => handleCancel(listing)}
+                disabled={loading}
+                className="flex-shrink-0 font-mono-game text-[9px] uppercase px-2 py-0.5 border border-destructive/30 text-destructive hover:bg-destructive/10 disabled:opacity-30 transition-colors"
               >
                 Cancel
               </button>

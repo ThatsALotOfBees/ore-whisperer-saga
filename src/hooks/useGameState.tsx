@@ -60,6 +60,9 @@ const PROCESSING_SPEED_FACTOR: Record<string, number> = {
 type Action =
   | { type: 'MINE_TICK' }
   | { type: 'SELL_ITEM'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number }
+  | { type: 'DEDUCT_FOR_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number }
+  | { type: 'RETURN_FROM_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; itemName: string }
+  | { type: 'RECEIVE_PURCHASE'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; totalCost: number }
   | { type: 'REFINE_ORE'; oreId: string; quantity: number }
   | { type: 'START_SMELT'; oreId: string; refined: boolean }
   | { type: 'COMPLETE_SMELT'; jobIndex: number }
@@ -135,6 +138,37 @@ function gameReducer(state: GameState, action: Action): GameState {
       if (newSource[itemId] <= 0) delete newSource[itemId];
 
       return { ...state, [source]: newSource, currency: state.currency + value * quantity };
+    }
+
+    case 'DEDUCT_FOR_LISTING': {
+      // Removes items from inventory when a marketplace listing is created (no currency gain)
+      const { itemId, itemType, quantity } = action;
+      const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
+      const current = state[sourceKey][itemId] || 0;
+      if (current < quantity) return state;
+      const newSource = { ...state[sourceKey] };
+      newSource[itemId] = current - quantity;
+      if (newSource[itemId] <= 0) delete newSource[itemId];
+      return { ...state, [sourceKey]: newSource };
+    }
+
+    case 'RETURN_FROM_LISTING': {
+      // Returns items to inventory when a listing is cancelled
+      const { itemId, itemType, quantity } = action;
+      const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
+      const newSource = { ...state[sourceKey] };
+      newSource[itemId] = (newSource[itemId] || 0) + quantity;
+      return { ...state, [sourceKey]: newSource };
+    }
+
+    case 'RECEIVE_PURCHASE': {
+      // Buyer receives items and pays currency
+      const { itemId, itemType, quantity, totalCost } = action;
+      if (state.currency < totalCost) return state;
+      const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
+      const newSource = { ...state[sourceKey] };
+      newSource[itemId] = (newSource[itemId] || 0) + quantity;
+      return { ...state, [sourceKey]: newSource, currency: state.currency - totalCost };
     }
 
     case 'REFINE_ORE': {
@@ -387,16 +421,23 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
-// ─── Automation interval by machine category ─────────────────────────────────
-const BASIC_MACHINES = ['wafer_cutter', 'etching_station'];
-const INTERMEDIATE_MACHINES = ['cnc_mill', 'laser_cutter', 'plasma_welder', 'chemical_reactor', 'centrifuge'];
-const ADVANCED_MACHINES = ['advanced_fab', 'quantum_lab'];
+// ─── Automation interval by machine tier ─────────────────────────────────────
+// Lower tier machines run slower (simpler recipes); advanced machines run faster
+const MACHINE_INTERVALS: Record<string, number> = {
+  wafer_cutter: 12000,       // Tier 1 recipes — fast output, simple parts
+  etching_station: 10000,    // Tier 2 recipes — slightly more complex assemblies
+  cnc_mill: 9000,            // Tier 3 precision components
+  laser_cutter: 8000,        // Basic electronics
+  plasma_welder: 7000,       // Tier 4 industrial components
+  chemical_reactor: 7000,    // Intermediate + advanced electronics
+  lithography_machine: 6000, // Processors / microcontrollers — high value
+  centrifuge: 5000,          // Tier 5 high-tech components
+  advanced_fab: 4000,        // Tier 6 quantum components + GPU cores
+  quantum_lab: 3000,         // Tier 7 void components + quantum gates — endgame
+};
 
 function getAutomationInterval(machineId: string): number {
-  if (BASIC_MACHINES.includes(machineId)) return 10000;
-  if (INTERMEDIATE_MACHINES.includes(machineId)) return 7000;
-  if (ADVANCED_MACHINES.includes(machineId)) return 4000;
-  return 10000;
+  return MACHINE_INTERVALS[machineId] ?? 10000;
 }
 
 // ─── Save state migration ────────────────────────────────────────────────────
