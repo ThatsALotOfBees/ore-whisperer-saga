@@ -7,11 +7,11 @@ import { Foundry } from '@/components/game/Foundry';
 import { CraftingStation } from '@/components/game/CraftingStation';
 import { UpgradeShop } from '@/components/game/UpgradeShop';
 import { ChatRoom } from '@/components/game/ChatRoom';
-import { ClansPanel } from '@/components/game/ClansPanel';
+// Donations removed - dependent on Supabase tables not yet configured
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat' | 'clans';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
@@ -20,7 +20,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'craft', label: 'Craft' },
   { key: 'upgrades', label: 'Upgrades' },
   { key: 'chat', label: 'Chat' },
-  { key: 'clans', label: 'Clans' },
 ];
 
 function GameStateSyncer() {
@@ -106,7 +105,6 @@ function GameContent() {
         {tab === 'craft' && <CraftingStation />}
         {tab === 'upgrades' && <UpgradeShop />}
         {tab === 'chat' && <ChatRoom />}
-        {tab === 'clans' && <ClansPanel />}
       </main>
 
       <GameStateSyncer />
