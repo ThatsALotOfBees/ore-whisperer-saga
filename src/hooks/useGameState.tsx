@@ -1,7 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { ALL_ORES, ORE_MAP, rollMiningDrop, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
-import { getAutomationInterval, getMachineUpgradeCost, MACHINE_UPGRADE_MAX_LEVEL } from '@/data/machines';
 
 export interface SmeltingJob {
   oreId: string;
@@ -28,7 +27,6 @@ export interface GameState {
   foundryTier: number;
   smeltingJobs: SmeltingJob[];
   unlockedMachines: string[];
-  machineLevels: Record<string, number>;
   automationJobs: AutomationJob[];
   autoMinerEnabled: boolean;
   totalMined: number;
@@ -45,7 +43,6 @@ const initialState: GameState = {
   foundryTier: 1,
   smeltingJobs: [],
   unlockedMachines: [],
-  machineLevels: {},
   automationJobs: [],
   autoMinerEnabled: false,
   totalMined: 0,
@@ -72,7 +69,6 @@ type Action =
   | { type: 'TICK_SMELTING' }
   | { type: 'TOGGLE_AUTO_MINER' }
   | { type: 'TOGGLE_AUTOMATION'; machineId: string; recipeId: string }
-  | { type: 'UPGRADE_MACHINE'; machineId: string }
   | { type: 'TICK_AUTOMATION' }
   | { type: 'LOAD_STATE'; state: GameState };
 
@@ -289,29 +285,6 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines };
     }
 
-    case 'UPGRADE_MACHINE': {
-      const { machineId } = action;
-      if (!state.unlockedMachines.includes(machineId)) return state;
-      const currentLevel = state.machineLevels[machineId] || 0;
-      const maxLevel = 10;
-      if (currentLevel >= maxLevel) return state;
-      const cost = getMachineUpgradeCost(machineId, currentLevel);
-      if (state.currency < cost) return state;
-
-      // Also update the interval on any existing automation job
-      const newInterval = getAutomationInterval(machineId, currentLevel + 1);
-      const newJobs = state.automationJobs.map(j =>
-        j.machineId === machineId ? { ...j, interval: newInterval } : j
-      );
-
-      return {
-        ...state,
-        currency: state.currency - cost,
-        machineLevels: { ...state.machineLevels, [machineId]: currentLevel + 1 },
-        automationJobs: newJobs,
-      };
-    }
-
     case 'TOGGLE_AUTO_MINER': {
       return { ...state, autoMinerEnabled: !state.autoMinerEnabled };
     }
@@ -341,7 +314,7 @@ function gameReducer(state: GameState, action: Action): GameState {
       }
 
       // New automation job
-      const interval = getAutomationInterval(machineId, state.machineLevels[machineId] || 0);
+      const interval = getAutomationInterval(machineId);
       const newJob: AutomationJob = {
         machineId,
         recipeId,
@@ -414,6 +387,18 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
+// ─── Automation interval by machine category ─────────────────────────────────
+const BASIC_MACHINES = ['wafer_cutter', 'etching_station'];
+const INTERMEDIATE_MACHINES = ['cnc_mill', 'laser_cutter', 'plasma_welder', 'chemical_reactor', 'centrifuge'];
+const ADVANCED_MACHINES = ['advanced_fab', 'quantum_lab'];
+
+function getAutomationInterval(machineId: string): number {
+  if (BASIC_MACHINES.includes(machineId)) return 10000;
+  if (INTERMEDIATE_MACHINES.includes(machineId)) return 7000;
+  if (ADVANCED_MACHINES.includes(machineId)) return 4000;
+  return 10000;
+}
+
 // ─── Save state migration ────────────────────────────────────────────────────
 const ORE_ID_REMAP: Record<string, string> = {
   silicon: 'quartz',
@@ -454,7 +439,6 @@ function migrateState(saved: any): GameState {
 
   // Ensure new fields exist
   if (!state.automationJobs) state.automationJobs = [];
-  if (!state.machineLevels) state.machineLevels = {};
   if (state.autoMinerEnabled === undefined) state.autoMinerEnabled = false;
 
   return state;
