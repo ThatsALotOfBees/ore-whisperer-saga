@@ -1,11 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import {
-  useGame,
-  getAutomationInterval,
-  getMachineUpgradeCost,
-  MACHINE_UPGRADE_MAX_LEVEL,
-  type AutomationJob,
-} from '@/hooks/useGameState';
+import { useGame, type AutomationJob } from '@/hooks/useGameState';
+import { getAutomationInterval, getMachineUpgradeCost, MACHINE_UPGRADE_MAX_LEVEL } from '@/data/machines';
 import { CRAFTING_RECIPES, RECIPE_MAP, type CraftingRecipe } from '@/data/recipes';
 import { ORE_MAP } from '@/data/ores';
 
