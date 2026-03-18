@@ -64,7 +64,27 @@ export function ClansPanel() {
       return;
     }
 
-    const { error: joinErr } = await supabase.from('profiles').update({ clan_id: data.id }).eq('user_id', user.id);
+    // Check if profile exists, create if not
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    let joinErr;
+    if (!existingProfile) {
+      const res = await supabase.from('profiles').insert({
+        user_id: user.id,
+        username: profile?.username || user.email?.split('@')[0] || 'miner',
+        display_name: profile?.display_name || user.email?.split('@')[0] || 'miner',
+        clan_id: data.id,
+      });
+      joinErr = res.error;
+    } else {
+      const res = await supabase.from('profiles').update({ clan_id: data.id }).eq('user_id', user.id);
+      joinErr = res.error;
+    }
+
     if (joinErr) {
       setError('Clan created but failed to join: ' + joinErr.message);
     } else {
@@ -80,11 +100,35 @@ export function ClansPanel() {
   const handleJoin = async (clanId: string) => {
     if (!user) return;
     setError('');
-    const { error: joinErr } = await supabase.from('profiles').update({ clan_id: clanId }).eq('user_id', user.id);
-    if (joinErr) {
-      setError('Failed to join: ' + joinErr.message);
-      return;
+
+    // First check if profile exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!existingProfile) {
+      // Profile doesn't exist yet - create it with clan_id
+      const { error: insertErr } = await supabase.from('profiles').insert({
+        user_id: user.id,
+        username: profile?.username || user.email?.split('@')[0] || 'miner',
+        display_name: profile?.display_name || user.email?.split('@')[0] || 'miner',
+        clan_id: clanId,
+      });
+      if (insertErr) {
+        setError('Failed to join (profile create): ' + insertErr.message);
+        return;
+      }
+    } else {
+      // Profile exists - update clan_id
+      const { error: joinErr } = await supabase.from('profiles').update({ clan_id: clanId }).eq('user_id', user.id);
+      if (joinErr) {
+        setError('Failed to join: ' + joinErr.message);
+        return;
+      }
     }
+
     await refreshProfile();
     loadClans();
     loadMembers(clanId);
