@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/hooks/useGameState';
 import { type OreRarity } from '@/data/ores';
@@ -10,11 +10,16 @@ export function MiningStation() {
   const [drops, setDrops] = useState<{ id: number; name: string; rarity: OreRarity; qty: number }[]>([]);
   const dropIdRef = useRef(0);
 
+  const isAutoMining = state.autoMinerEnabled;
+  const autoMinerLevel = state.miningUpgrades.auto_miner_speed || 0;
+  const autoMinerInterval = Math.max(2000, 10000 * Math.pow(0.85, autoMinerLevel));
+
   const tickInterval = Math.max(30, Math.floor(50 / miningSpeed));
   const progressPerTick = 2 * miningSpeed;
 
+  // Manual mining (disabled when auto-miner is on)
   useEffect(() => {
-    if (!isMining) {
+    if (!isMining || isAutoMining) {
       setProgress(0);
       return;
     }
@@ -31,7 +36,26 @@ export function MiningStation() {
     }, tickInterval);
 
     return () => clearInterval(interval);
-  }, [isMining, tickInterval, progressPerTick, dispatch]);
+  }, [isMining, isAutoMining, tickInterval, progressPerTick, dispatch]);
+
+  // Auto-mining progress animation
+  const [autoProgress, setAutoProgress] = useState(0);
+  useEffect(() => {
+    if (!isAutoMining) {
+      setAutoProgress(0);
+      return;
+    }
+    const tickMs = 50;
+    const progressPerAutoTick = (100 / autoMinerInterval) * tickMs;
+    const interval = setInterval(() => {
+      setAutoProgress(prev => {
+        const next = prev + progressPerAutoTick;
+        if (next >= 100) return 0;
+        return next;
+      });
+    }, tickMs);
+    return () => clearInterval(interval);
+  }, [isAutoMining, autoMinerInterval]);
 
   // Show drop notifications
   useEffect(() => {
@@ -44,7 +68,8 @@ export function MiningStation() {
 
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const currentProgress = isAutoMining ? autoProgress : progress;
+  const strokeDashoffset = circumference - (currentProgress / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-6 p-8">
@@ -52,20 +77,45 @@ export function MiningStation() {
         Extraction Point 01
       </h2>
 
+      {/* Auto-miner toggle */}
+      <div className="flex items-center gap-3">
+        <span className={`font-mono-game text-[10px] uppercase tracking-wider ${!isAutoMining ? 'text-primary' : 'text-muted-foreground'}`}>
+          Manual
+        </span>
+        <button
+          onClick={() => dispatch({ type: 'TOGGLE_AUTO_MINER' })}
+          className={`relative w-12 h-6 rounded-full border transition-colors ${
+            isAutoMining ? 'bg-accent/20 border-accent' : 'bg-card border-border'
+          }`}
+        >
+          <div
+            className={`absolute top-0.5 w-5 h-5 rounded-full transition-all ${
+              isAutoMining ? 'left-6 bg-accent' : 'left-0.5 bg-muted-foreground'
+            }`}
+          />
+        </button>
+        <span className={`font-mono-game text-[10px] uppercase tracking-wider ${isAutoMining ? 'text-accent' : 'text-muted-foreground'}`}>
+          Auto
+        </span>
+      </div>
+
       <div className="relative">
+        {/* Manual mining button (disabled when auto-mining) */}
         <motion.button
-          onPointerDown={() => setIsMining(true)}
+          onPointerDown={() => !isAutoMining && setIsMining(true)}
           onPointerUp={() => setIsMining(false)}
           onPointerLeave={() => setIsMining(false)}
-          whileTap={{ scale: 0.98 }}
+          whileTap={!isAutoMining ? { scale: 0.98 } : {}}
           transition={{ duration: 0.02 }}
-          className="relative h-48 w-48 rounded-full border border-border flex items-center justify-center cursor-pointer select-none focus:outline-none"
+          className={`relative h-48 w-48 rounded-full border flex items-center justify-center select-none focus:outline-none ${
+            isAutoMining ? 'border-accent/30 cursor-default' : 'border-border cursor-pointer'
+          }`}
         >
           <svg className="absolute inset-0 -rotate-90" viewBox="0 0 200 200">
             <circle cx="100" cy="100" r={radius} fill="none" stroke="hsl(var(--border))" strokeWidth="2" />
             <circle
               cx="100" cy="100" r={radius} fill="none"
-              stroke="hsl(var(--primary))"
+              stroke={isAutoMining ? 'hsl(var(--accent))' : 'hsl(var(--primary))'}
               strokeWidth="3"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
@@ -74,13 +124,28 @@ export function MiningStation() {
             />
           </svg>
 
-          <div className="absolute inset-4 rounded-full bg-card/80 flex items-center justify-center">
-            <span className="font-mono-game text-lg font-bold text-foreground tracking-wider">
-              {isMining ? `${Math.floor(progress)}%` : 'EXTRACT'}
-            </span>
+          <div className="absolute inset-4 rounded-full bg-card/80 flex flex-col items-center justify-center">
+            {isAutoMining ? (
+              <>
+                <span className="font-mono-game text-sm font-bold text-accent tracking-wider">AUTO</span>
+                <span className="font-mono-game text-[10px] text-muted-foreground">{(autoMinerInterval / 1000).toFixed(1)}s</span>
+              </>
+            ) : (
+              <span className="font-mono-game text-lg font-bold text-foreground tracking-wider">
+                {isMining ? `${Math.floor(progress)}%` : 'EXTRACT'}
+              </span>
+            )}
           </div>
 
-          {isMining && (
+          {isAutoMining && (
+            <motion.div
+              animate={{ scale: [1, 1.03, 1], opacity: [0.2, 0.4, 0.2] }}
+              transition={{ repeat: Infinity, duration: autoMinerInterval / 1000 }}
+              className="absolute inset-0 rounded-full border border-accent"
+            />
+          )}
+
+          {isMining && !isAutoMining && (
             <motion.div
               animate={{ scale: [1, 1.05, 1], opacity: [0.3, 0.6, 0.3] }}
               transition={{ repeat: Infinity, duration: 0.8 }}
@@ -112,12 +177,18 @@ export function MiningStation() {
           TOTAL MINED: <span className="text-primary">{state.totalMined}</span>
         </p>
         <p className="font-mono-game text-xs text-muted-foreground">
-          SPEED: <span className="text-primary">{miningSpeed.toFixed(2)}x</span>
+          {isAutoMining ? (
+            <>AUTO-MINER: <span className="text-accent">Lv.{autoMinerLevel} ({(autoMinerInterval / 1000).toFixed(1)}s)</span></>
+          ) : (
+            <>SPEED: <span className="text-primary">{miningSpeed.toFixed(2)}x</span></>
+          )}
         </p>
       </div>
 
       <p className="text-xs text-muted-foreground/60 max-w-xs text-center">
-        Hold the button to mine. Upgrade your drill for faster extraction and rarer drops.
+        {isAutoMining
+          ? 'Auto-miner active. Mining happens automatically. Upgrade speed in the Upgrades tab.'
+          : 'Hold the button to mine. Toggle auto-mine for hands-free extraction.'}
       </p>
     </div>
   );

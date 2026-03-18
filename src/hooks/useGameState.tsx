@@ -28,6 +28,7 @@ export interface GameState {
   smeltingJobs: SmeltingJob[];
   unlockedMachines: string[];
   automationJobs: AutomationJob[];
+  autoMinerEnabled: boolean;
   totalMined: number;
   lastDrop: { ore: Ore; quantity: number } | null;
 }
@@ -43,6 +44,7 @@ const initialState: GameState = {
   smeltingJobs: [],
   unlockedMachines: [],
   automationJobs: [],
+  autoMinerEnabled: false,
   totalMined: 0,
   lastDrop: null,
 };
@@ -65,6 +67,7 @@ type Action =
   | { type: 'UPGRADE_FOUNDRY' }
   | { type: 'CRAFT_ITEM'; recipeId: string }
   | { type: 'TICK_SMELTING' }
+  | { type: 'TOGGLE_AUTO_MINER' }
   | { type: 'TOGGLE_AUTOMATION'; machineId: string; recipeId: string }
   | { type: 'TICK_AUTOMATION' }
   | { type: 'LOAD_STATE'; state: GameState };
@@ -282,6 +285,10 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines };
     }
 
+    case 'TOGGLE_AUTO_MINER': {
+      return { ...state, autoMinerEnabled: !state.autoMinerEnabled };
+    }
+
     case 'TOGGLE_AUTOMATION': {
       const { machineId, recipeId } = action;
       if (!state.unlockedMachines.includes(machineId)) return state;
@@ -430,8 +437,9 @@ function migrateState(saved: any): GameState {
     state.foundryTier = FOUNDRY_TIER_REMAP[state.foundryTier];
   }
 
-  // Ensure automationJobs exists
+  // Ensure new fields exist
   if (!state.automationJobs) state.automationJobs = [];
+  if (state.autoMinerEnabled === undefined) state.autoMinerEnabled = false;
 
   return state;
 }
@@ -475,6 +483,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => dispatch({ type: 'TICK_AUTOMATION' }), 2000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-miner tick
+  useEffect(() => {
+    if (!state.autoMinerEnabled) return;
+    const autoMinerLevel = state.miningUpgrades.auto_miner_speed || 0;
+    // Base: 10 seconds, each level reduces by 10% (min 2 seconds)
+    const intervalMs = Math.max(2000, 10000 * Math.pow(0.85, autoMinerLevel));
+    const interval = setInterval(() => dispatch({ type: 'MINE_TICK' }), intervalMs);
+    return () => clearInterval(interval);
+  }, [state.autoMinerEnabled, state.miningUpgrades.auto_miner_speed]);
 
   const miningSpeed = getMiningSpeed(state);
   const foundry = getCurrentFoundry(state);

@@ -36,6 +36,7 @@ export const MINING_UPGRADES: MiningUpgrade[] = [
   { id: 'drill_speed', name: 'Drill Speed', description: 'Faster mining ticks', maxLevel: 10, baseCost: 50, costMultiplier: 2.2, effect: 'speed', effectPerLevel: 0.15 },
   { id: 'ore_scanner', name: 'Ore Scanner', description: 'Higher chance for rare ores', maxLevel: 10, baseCost: 100, costMultiplier: 2.5, effect: 'luck', effectPerLevel: 0.12 },
   { id: 'multi_drill', name: 'Multi-Drill', description: 'Chance to mine multiple ores', maxLevel: 5, baseCost: 500, costMultiplier: 3.0, effect: 'multiDrop', effectPerLevel: 0.1 },
+  { id: 'auto_miner_speed', name: 'Auto-Miner Speed', description: 'Faster auto-mining (15% per level)', maxLevel: 10, baseCost: 200, costMultiplier: 2.5, effect: 'speed', effectPerLevel: 0.15 },
 ];
 
 // ─── 20-Tier Foundry Progression ─────────────────────────────────────────────
