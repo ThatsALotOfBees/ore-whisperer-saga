@@ -89,7 +89,7 @@ const rareOres: Ore[] = [
 
 // ─── Epic (Tier 4) ── 15 ores ───────────────────────────────────────────────
 const epicOres: Ore[] = [
-  { id: 'titanium', name: 'Titanium Ore', tier: 4, rarity: 'epic', miningChance: 0.008, smeltYield: 1, refineMultiplier: 1.7, refineCost: 20, value: 20, hardness: 'high', processingDifficulty: 'expensive', minSmeltTier: 9 },
+  { id: 'titanium', name: 'Titanium Ore', tier: 4, rarity: 'epic', miningChance: 0.008, smeltYield: 1, refineMultiplier: 1.7, refineCost: 20, value: 20, hardness: 'high', processingDifficulty: 'expensive', minSmeltTier: 8 },
   { id: 'iridium', name: 'Iridium Ore', tier: 4, rarity: 'epic', miningChance: 0.007, smeltYield: 1, refineMultiplier: 2.2, refineCost: 60, value: 80, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 9 },
   { id: 'osmium', name: 'Osmium Ore', tier: 4, rarity: 'epic', miningChance: 0.007, smeltYield: 1, refineMultiplier: 2.1, refineCost: 55, value: 75, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 9 },
   { id: 'rhodium', name: 'Rhodium Ore', tier: 4, rarity: 'epic', miningChance: 0.006, smeltYield: 1, refineMultiplier: 2.2, refineCost: 60, value: 85, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 9 },
