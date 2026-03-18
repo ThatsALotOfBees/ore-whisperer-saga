@@ -10,11 +10,12 @@ import { ChatRoom } from '@/components/game/ChatRoom';
 // Donations removed - dependent on Supabase tables not yet configured
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
+import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'upgrades' | 'chat';
 
-const TABS: { key: Tab; label: string }[] = [
+const BASE_TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
   { key: 'inventory', label: 'Inventory' },
   { key: 'foundry', label: 'Foundry' },
@@ -47,6 +48,12 @@ function GameStateSyncer() {
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
   const { user, profile, signOut, loading, isGuest } = useAuth();
+  const { state } = useGame();
+
+  const hasMachines = state.unlockedMachines.length > 0;
+  const TABS = hasMachines
+    ? [...BASE_TABS.slice(0, 4), { key: 'machines' as Tab, label: 'Machines' }, ...BASE_TABS.slice(4)]
+    : BASE_TABS;
 
   if (loading && !isGuest) {
     return (
@@ -104,6 +111,7 @@ function GameContent() {
         {tab === 'inventory' && <Inventory />}
         {tab === 'foundry' && <Foundry />}
         {tab === 'craft' && <CraftingStation />}
+        {tab === 'machines' && <MachinesPanel />}
         {tab === 'upgrades' && <UpgradeShop />}
         {tab === 'chat' && <ChatRoom />}
       </main>
