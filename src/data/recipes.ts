@@ -244,7 +244,7 @@ const tier3Components: CraftingRecipe[] = [
 // Machine: plasma_welder — high-temperature plasma fusion for industrial-grade assemblies
 const tier4Components: CraftingRecipe[] = [
   { id: 'heavy_frame', name: 'Heavy Frame', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'structural_core', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 3 }], outputQuantity: 1, description: 'Industrial-grade frame' },
-  { id: 'industrial_gearbox', name: 'Industrial Gearbox', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'compact_gearbox', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'High-torque gear system' },
+  { id: 'industrial_gearbox', name: 'Industrial Gearbox', category: 'component', requiredMachine: 'cnc_mill', ingredients: [{ itemId: 'compact_gearbox', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'High-torque gear system' },
   { id: 'reinforced_shaft', name: 'Reinforced Shaft', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'precision_shaft', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Unbreakable rotation axis' },
   { id: 'load_bearing_unit', name: 'Load Bearing Unit', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'bearing_unit', type: 'item', quantity: 2 }, { itemId: 'iridium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Extreme-load bearing' },
   { id: 'advanced_housing', name: 'Advanced Housing', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'control_housing', type: 'item', quantity: 1 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Armored enclosure' },
@@ -252,7 +252,7 @@ const tier4Components: CraftingRecipe[] = [
   { id: 'energy_conduit', name: 'Energy Conduit', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'energy_channel', type: 'item', quantity: 2 }, { itemId: 'monazite', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'High-capacity power line' },
   { id: 'power_transfer_unit', name: 'Power Transfer Unit', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'energy_conduit', type: 'item', quantity: 1 }, { itemId: 'rotary_component', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Mechanical-electrical converter' },
   { id: 'structural_matrix', name: 'Structural Matrix', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'structural_core', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 2 }], outputQuantity: 1, description: 'Interconnected support grid' },
-  { id: 'machine_chassis', name: 'Machine Chassis', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'heavy_frame', type: 'item', quantity: 1 }, { itemId: 'structural_matrix', type: 'item', quantity: 1 }, { itemId: 'mounting_bracket', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Complete machine body' },
+  { id: 'machine_chassis', name: 'Machine Chassis', category: 'component', requiredMachine: 'etching_station', ingredients: [{ itemId: 'iron', type: 'ingot', quantity: 10 }, { itemId: 'aluminum', type: 'ingot', quantity: 8 }, { itemId: 'copper', type: 'ingot', quantity: 5 }, { itemId: 'zinc', type: 'ingot', quantity: 4 }], outputQuantity: 1, description: 'Complete machine body' },
   { id: 'high_tension_spring', name: 'High-Tension Spring', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'spring_coil', type: 'item', quantity: 2 }, { itemId: 'tungsten', type: 'ingot', quantity: 2 }], outputQuantity: 2, description: 'Extreme-force spring' },
   { id: 'industrial_joint', name: 'Industrial Joint', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'reinforced_joint', type: 'item', quantity: 2 }, { itemId: 'titanium', type: 'ingot', quantity: 1 }], outputQuantity: 1, description: 'Heavy machinery articulation' },
   { id: 'stabilized_frame', name: 'Stabilized Frame', category: 'component', requiredMachine: 'plasma_welder', ingredients: [{ itemId: 'modular_frame', type: 'item', quantity: 1 }, { itemId: 'stabilizer_unit', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Vibration-free platform' },
@@ -327,7 +327,7 @@ const electronics: CraftingRecipe[] = [
   { id: 'power_regulator', name: 'Power Regulator', category: 'electronic', requiredMachine: 'chemical_reactor', ingredients: [{ itemId: 'inductor', type: 'item', quantity: 2 }, { itemId: 'capacitor', type: 'item', quantity: 2 }, { itemId: 'diode', type: 'item', quantity: 2 }, { itemId: 'resistor', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Voltage regulation circuit' },
 
   // Advanced Electronics — chemical_reactor for logic/memory, lithography for processors
-  { id: 'logic_controller', name: 'Logic Controller', category: 'electronic', requiredMachine: 'chemical_reactor', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'contact_pin', type: 'item', quantity: 4 }, { itemId: 'fine_wiring', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Programmable logic unit' },
+  { id: 'logic_controller', name: 'Logic Controller', category: 'electronic', requiredMachine: 'laser_cutter', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'contact_pin', type: 'item', quantity: 4 }, { itemId: 'fine_wiring', type: 'item', quantity: 1 }, { itemId: 'fastener_set', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Programmable logic unit' },
   { id: 'memory_module', name: 'Memory Module', category: 'electronic', requiredMachine: 'chemical_reactor', ingredients: [{ itemId: 'insulated_panel', type: 'item', quantity: 1 }, { itemId: 'metal_plate', type: 'item', quantity: 8 }, { itemId: 'contact_pin', type: 'item', quantity: 4 }, { itemId: 'fastener_set', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'DRAM storage module' },
   { id: 'processor', name: 'Processor', category: 'electronic', requiredMachine: 'lithography_machine', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 1 }, { itemId: 'signal_contact', type: 'item', quantity: 2 }, { itemId: 'contact_pin', type: 'item', quantity: 8 }, { itemId: 'fastener_set', type: 'item', quantity: 4 }], outputQuantity: 1, description: 'Advanced computation unit' },
   { id: 'microcontroller', name: 'Microcontroller', category: 'electronic', requiredMachine: 'lithography_machine', ingredients: [{ itemId: 'compact_assembly', type: 'item', quantity: 1 }, { itemId: 'transistor', type: 'item', quantity: 6 }, { itemId: 'memory_module', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Simple programmable processor' },
@@ -338,21 +338,91 @@ const electronics: CraftingRecipe[] = [
 // ─── Machines ────────────────────────────────────────────────────────────────
 // Machines themselves have no requiredMachine — they are assembled in the Craft tab
 const machines: CraftingRecipe[] = [
-  // Basic Machines
-  { id: 'wafer_cutter', name: 'Wafer Cutter', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'precision_shaft', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision silicon cutting tool' },
-  { id: 'lithography_machine', name: 'Lithography Machine', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'signal_conduit', type: 'item', quantity: 2 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'UV lithography for chip fabrication' },
-  { id: 'etching_station', name: 'Etching Station', category: 'machine', ingredients: [{ itemId: 'heavy_frame', type: 'item', quantity: 1 }, { itemId: 'pressure_seal', type: 'item', quantity: 3 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Chemical etching for PCB traces' },
+  // ── Basic Machines ───────────────────────────────────────────────────────────
+  // These are the first machines crafted, so their ingredients must be pure ingots
+  // (no requiredMachine on any ingredient).
 
-  // Intermediate Machines
-  { id: 'cnc_mill', name: 'CNC Mill', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'industrial_gearbox', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 3 }, { itemId: 'processor', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision machining centerpiece' },
-  { id: 'laser_cutter', name: 'Laser Cutter', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'energy_channel_core', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'Precision laser cutting system' },
-  { id: 'plasma_welder', name: 'Plasma Welder', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'thermal_regulator', type: 'item', quantity: 2 }, { itemId: 'power_regulator', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'High-temperature fusion welding' },
-  { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'pressure_core', type: 'item', quantity: 1 }, { itemId: 'logic_controller', type: 'item', quantity: 2 }], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
-  { id: 'centrifuge', name: 'Centrifuge', category: 'machine', ingredients: [{ itemId: 'machine_chassis', type: 'item', quantity: 1 }, { itemId: 'dynamic_balancer', type: 'item', quantity: 1 }, { itemId: 'motor_controller', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'High-speed separation apparatus' },
+  // wafer_cutter: first machine unlocked; iron/copper/aluminum ingots only
+  { id: 'wafer_cutter', name: 'Wafer Cutter', category: 'machine', ingredients: [
+    { itemId: 'iron', type: 'ingot', quantity: 20 },
+    { itemId: 'copper', type: 'ingot', quantity: 10 },
+    { itemId: 'aluminum', type: 'ingot', quantity: 8 },
+    { itemId: 'tin', type: 'ingot', quantity: 5 },
+  ], outputQuantity: 1, description: 'Precision silicon cutting tool' },
 
-  // Advanced Machines
-  { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [{ itemId: 'singularity_chassis', type: 'item', quantity: 1 }, { itemId: 'precision_matrix', type: 'item', quantity: 1 }, { itemId: 'microcontroller', type: 'item', quantity: 4 }, { itemId: 'gpu_core', type: 'item', quantity: 1 }], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
-  { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [{ itemId: 'singularity_chassis', type: 'item', quantity: 1 }, { itemId: 'quantum_structural_matrix', type: 'item', quantity: 1 }, { itemId: 'hyper_conductor', type: 'item', quantity: 3 }], outputQuantity: 1, description: 'Quantum research facility' },
+  // etching_station: second basic machine; adds zinc/nickel for hardened parts
+  { id: 'etching_station', name: 'Etching Station', category: 'machine', ingredients: [
+    { itemId: 'iron', type: 'ingot', quantity: 25 },
+    { itemId: 'copper', type: 'ingot', quantity: 15 },
+    { itemId: 'zinc', type: 'ingot', quantity: 10 },
+    { itemId: 'lead', type: 'ingot', quantity: 8 },
+  ], outputQuantity: 1, description: 'Chemical etching for PCB traces' },
+
+  // lithography_machine: requires quartz + silver (tier 2/3 ores) — mid basic tier
+  { id: 'lithography_machine', name: 'Lithography Machine', category: 'machine', ingredients: [
+    { itemId: 'iron', type: 'ingot', quantity: 20 },
+    { itemId: 'aluminum', type: 'ingot', quantity: 15 },
+    { itemId: 'quartz', type: 'ingot', quantity: 10 },
+    { itemId: 'silver', type: 'ingot', quantity: 5 },
+    { itemId: 'copper', type: 'ingot', quantity: 10 },
+  ], outputQuantity: 1, description: 'UV lithography for chip fabrication' },
+
+  // ── Intermediate Machines ────────────────────────────────────────────────────
+  // Built after basic machines exist; can use items produced by wafer_cutter / etching_station / lithography_machine.
+
+  // cnc_mill: uses etching_station items (machine_chassis, gear_assembly, shaft_component) + lithography_machine (processor) + laser_cutter (logic_controller)
+  { id: 'cnc_mill', name: 'CNC Mill', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'gear_assembly', type: 'item', quantity: 2 },
+    { itemId: 'shaft_component', type: 'item', quantity: 2 },
+    { itemId: 'logic_controller', type: 'item', quantity: 3 },
+    { itemId: 'processor', type: 'item', quantity: 1 },
+  ], outputQuantity: 1, description: 'Precision machining centerpiece' },
+
+  // laser_cutter: built after cnc_mill; uses cnc_mill outputs (energy_channel, fine_wiring, micro_frame)
+  { id: 'laser_cutter', name: 'Laser Cutter', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'energy_channel', type: 'item', quantity: 2 },
+    { itemId: 'fine_wiring', type: 'item', quantity: 3 },
+    { itemId: 'micro_frame', type: 'item', quantity: 2 },
+  ], outputQuantity: 1, description: 'Precision laser cutting system' },
+
+  // plasma_welder: needs cnc_mill outputs (thermal_regulator) + chemical_reactor outputs (power_regulator)
+  { id: 'plasma_welder', name: 'Plasma Welder', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'thermal_regulator', type: 'item', quantity: 2 },
+    { itemId: 'power_regulator', type: 'item', quantity: 2 },
+  ], outputQuantity: 1, description: 'High-temperature fusion welding' },
+
+  // chemical_reactor: needs plasma_welder outputs (pressure_core) + logic_controller (chemical_reactor)
+  // Bootstrap: logic_controller requires chemical_reactor — move chemical_reactor to use laser_cutter outputs instead
+  { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'pressure_core', type: 'item', quantity: 1 },
+    { itemId: 'resistor', type: 'item', quantity: 6 },
+    { itemId: 'capacitor', type: 'item', quantity: 4 },
+  ], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
+
+  // centrifuge: needs plasma_welder (dynamic_balancer) + chemical_reactor (motor_controller)
+  { id: 'centrifuge', name: 'Centrifuge', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'dynamic_balancer', type: 'item', quantity: 1 },
+    { itemId: 'motor_controller', type: 'item', quantity: 1 },
+  ], outputQuantity: 1, description: 'High-speed separation apparatus' },
+
+  // ── Advanced Machines ────────────────────────────────────────────────────────
+  { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [
+    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
+    { itemId: 'precision_matrix', type: 'item', quantity: 1 },
+    { itemId: 'microcontroller', type: 'item', quantity: 4 },
+    { itemId: 'gpu_core', type: 'item', quantity: 1 },
+  ], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
+
+  { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [
+    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
+    { itemId: 'quantum_structural_matrix', type: 'item', quantity: 1 },
+    { itemId: 'hyper_conductor', type: 'item', quantity: 3 },
+  ], outputQuantity: 1, description: 'Quantum research facility' },
 ];
 
 // ─── Combined Recipe List ────────────────────────────────────────────────────
