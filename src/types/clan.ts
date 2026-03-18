@@ -1,15 +1,8 @@
-import type { Database } from '@/integrations/supabase/types';
-
-export type ClanRequest = Database['public']['Tables']['clan_requests']['Row'];
-export type ClanDonation = Database['public']['Tables']['clan_donations']['Row'];
-export type ClanContribution = Database['public']['Tables']['clan_contribution']['Row'];
-export type ClanPerk = Database['public']['Tables']['clan_perks']['Row'];
-
 export type ItemType = 'ore' | 'refined' | 'ingot' | 'component' | 'electronic' | 'machine';
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic';
 
 export interface RequestLimitConfig {
-  [key in ItemRarity]: {
+  [key: string]: {
     maxQuantity: number;
     cooldownMinutes: number;
   };
@@ -34,12 +27,6 @@ export const RARITY_DONATION_BONUS: Record<ItemRarity, number> = {
   mythic: 20,
   exotic: 40,
 };
-
-export interface ClanPerkEffect {
-  type: 'request_limit' | 'cooldown_reduction' | 'donation_bonus' | 'request_slots';
-  level: number;
-  effect: number;
-}
 
 export function getPerkMultiplier(perkType: string, level: number): number {
   switch (perkType) {
