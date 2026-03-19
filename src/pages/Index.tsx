@@ -95,17 +95,27 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
       </nav>
 
       <main className="flex-1 max-w-3xl mx-auto w-full">
-        {tab === 'mine' && <MiningStation />}
-        {tab === 'inventory' && <Inventory />}
-        {tab === 'foundry' && <Foundry />}
-        {tab === 'craft' && <CraftingStation />}
-        {tab === 'machines' && <MachinesPanel />}
-        {tab === 'market' && <Marketplace />}
-        {tab === 'upgrades' && <UpgradeShop />}
-        {tab === 'chat' && <ChatRoom />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={tab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+          >
+            {tab === 'mine' && <MiningStation />}
+            {tab === 'inventory' && <Inventory />}
+            {tab === 'foundry' && <Foundry />}
+            {tab === 'craft' && <CraftingStation />}
+            {tab === 'machines' && <MachinesPanel />}
+            {tab === 'market' && <Marketplace />}
+            {tab === 'upgrades' && <UpgradeShop />}
+            {tab === 'chat' && <ChatRoom />}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      
+      <SaveIndicator />
       <DiscordButton />
 
       <footer className="border-t border-border px-4 py-2 text-center">
