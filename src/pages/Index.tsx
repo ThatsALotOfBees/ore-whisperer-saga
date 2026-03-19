@@ -10,7 +10,6 @@ import { UpgradeShop } from '@/components/game/UpgradeShop';
 import { Marketplace } from '@/components/game/Marketplace';
 import { ChatRoom } from '@/components/game/ChatRoom';
 import { MachinesPanel } from '@/components/game/MachinesPanel';
-import { Marketplace } from '@/components/game/Marketplace';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
