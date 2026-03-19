@@ -154,15 +154,14 @@ export function Marketplace() {
     setLoading(true);
 
     // Use the SECURITY DEFINER function to atomically deactivate the listing
-    const { data, error } = await supabase.rpc('purchase_marketplace_listing', {
+    const { data, error } = await supabase.rpc('purchase_marketplace_listing' as any, {
       listing_id: listing.id,
       buyer_id: user.id,
-    });
+    }) as { data: any; error: any };
 
     if (error || !data?.success) {
       showStatus(data?.error || error?.message || 'Purchase failed', false);
     } else {
-      // Apply game state changes: deduct currency and add items to inventory
       dispatch({
         type: 'RECEIVE_PURCHASE',
         itemId: data.item_id,
