@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GameProvider, useGame } from '@/hooks/useGameState';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { MiningStation } from '@/components/game/MiningStation';
@@ -11,29 +11,10 @@ import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
-import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
 
-function GameStateSyncer() {
-  const { state } = useGame();
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(async () => {
-      const { lastDrop, smeltingJobs, ...saveable } = state;
-      await supabase.from('profiles').update({
-        game_state: saveable as any,
-        total_mined: state.totalMined,
-        currency: state.currency,
-      }).eq('user_id', user.id);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [user, state]);
-
-  return null;
-}
+// GameStateSyncer removed — saving is now handled inside GameProvider
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -122,7 +103,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         {tab === 'chat' && <ChatRoom />}
       </main>
 
-      <GameStateSyncer />
+      
       <DiscordButton />
 
       <footer className="border-t border-border px-4 py-2 text-center">

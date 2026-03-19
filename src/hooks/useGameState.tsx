@@ -1,4 +1,5 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { ALL_ORES, ORE_MAP, rollMiningDrop, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
 
@@ -507,11 +508,59 @@ function loadState(): GameState {
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, undefined, loadState);
+  const [loaded, setLoaded] = useState(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedRef = useRef<string>('');
+
+  // Load from Supabase on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) { setLoaded(true); return; }
+        const { data } = await supabase
+          .from('profiles')
+          .select('game_state')
+          .eq('user_id', user.id)
+          .single();
+        if (data?.game_state && !cancelled) {
+          const migrated = migrateState(data.game_state as any);
+          dispatch({ type: 'LOAD_STATE', state: migrated });
+        }
+      } catch {}
+      if (!cancelled) setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Save to localStorage + debounced Supabase save on every state change
+  const saveToSupabase = useCallback(async (gameState: GameState) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { lastDrop, smeltingJobs, ...saveable } = gameState;
+      await supabase.from('profiles').update({
+        game_state: saveable as any,
+        total_mined: gameState.totalMined,
+        currency: gameState.currency,
+      }).eq('user_id', user.id);
+    } catch {}
+  }, []);
 
   useEffect(() => {
-    const { lastDrop, ...toSave } = state;
+    const { lastDrop, smeltingJobs, ...toSave } = state;
     localStorage.setItem('voidmarket_state', JSON.stringify(toSave));
-  }, [state]);
+
+    // Debounced Supabase save (500ms)
+    const serialized = JSON.stringify(toSave);
+    if (serialized === lastSavedRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      lastSavedRef.current = serialized;
+      saveToSupabase(state);
+    }, 500);
+  }, [state, saveToSupabase]);
 
   // Tick smelting
   useEffect(() => {
@@ -529,7 +578,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state.autoMinerEnabled) return;
     const autoMinerLevel = state.miningUpgrades.auto_miner_speed || 0;
-    // Base: 10 seconds, each level reduces by 10% (min 2 seconds)
     const intervalMs = Math.max(2000, 10000 * Math.pow(0.85, autoMinerLevel));
     const interval = setInterval(() => dispatch({ type: 'MINE_TICK' }), intervalMs);
     return () => clearInterval(interval);
