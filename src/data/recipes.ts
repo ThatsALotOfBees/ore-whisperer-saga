@@ -398,7 +398,7 @@ const machines: CraftingRecipe[] = [
   // Bootstrap: logic_controller requires chemical_reactor — move chemical_reactor to use laser_cutter outputs instead
   { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [
     { itemId: 'machine_chassis', type: 'item', quantity: 1 },
-    { itemId: 'pressure_core', type: 'item', quantity: 1 },
+    { itemId: 'control_housing', type: 'item', quantity: 1 },
     { itemId: 'resistor', type: 'item', quantity: 6 },
     { itemId: 'capacitor', type: 'item', quantity: 4 },
   ], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
