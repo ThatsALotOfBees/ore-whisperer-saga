@@ -7,6 +7,7 @@ import { Inventory } from '@/components/game/Inventory';
 import { Foundry } from '@/components/game/Foundry';
 import { CraftingStation } from '@/components/game/CraftingStation';
 import { UpgradeShop } from '@/components/game/UpgradeShop';
+import { Marketplace } from '@/components/game/Marketplace';
 import { ChatRoom } from '@/components/game/ChatRoom';
 import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
@@ -14,9 +15,39 @@ import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'marketplace' | 'chat' | 'clans';
 
-// GameStateSyncer removed — saving is now handled inside GameProvider
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'mine', label: 'Mine' },
+  { key: 'inventory', label: 'Inventory' },
+  { key: 'foundry', label: 'Foundry' },
+  { key: 'craft', label: 'Craft' },
+  { key: 'upgrades', label: 'Upgrades' },
+  { key: 'marketplace', label: 'Market' },
+  { key: 'chat', label: 'Chat' },
+  { key: 'clans', label: 'Clans' },
+];
+
+function GameStateSyncer() {
+  const { state } = useGame();
+  const { user } = useAuth();
+
+  // Sync game state to DB periodically
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(async () => {
+      const { lastDrop, smeltingJobs, ...saveable } = state;
+      await supabase.from('profiles').update({
+        game_state: saveable as any,
+        total_mined: state.totalMined,
+        currency: state.currency,
+      }).eq('user_id', user.id);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [user, state]);
+
+  return null;
+}
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -83,6 +114,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
+            data-tab={t.key}
             className={`font-mono-game text-[11px] uppercase tracking-[0.15em] px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-primary text-primary bg-primary/5'
@@ -95,24 +127,14 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
       </nav>
 
       <main className="flex-1 max-w-3xl mx-auto w-full">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
-          >
-            {tab === 'mine' && <MiningStation />}
-            {tab === 'inventory' && <Inventory />}
-            {tab === 'foundry' && <Foundry />}
-            {tab === 'craft' && <CraftingStation />}
-            {tab === 'machines' && <MachinesPanel />}
-            {tab === 'market' && <Marketplace />}
-            {tab === 'upgrades' && <UpgradeShop />}
-            {tab === 'chat' && <ChatRoom />}
-          </motion.div>
-        </AnimatePresence>
+        {tab === 'mine' && <MiningStation />}
+        {tab === 'inventory' && <Inventory />}
+        {tab === 'foundry' && <Foundry />}
+        {tab === 'craft' && <CraftingStation />}
+        {tab === 'upgrades' && <UpgradeShop />}
+        {tab === 'marketplace' && <Marketplace />}
+        {tab === 'chat' && <ChatRoom />}
+        {tab === 'clans' && <ClansPanel />}
       </main>
 
       <SaveIndicator />

@@ -109,17 +109,45 @@ export function Inventory() {
         ))}
       </div>
 
-      <ItemBrowser
-        items={items}
-        onSelect={handleSelect}
-        onAction={handleSell}
-        actionLabel="Sell"
-        placeholder={`Search ${tab}...`}
-        emptyMessage={items.length === 0 ? 'Nothing here yet. Start mining!' : 'No items match your search'}
-        showRarityFilter={true}
-        categories={itemCategories}
-        maxHeight="50vh"
-      />
+      <div className="space-y-1 max-h-[60vh] overflow-y-auto">
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground/50 text-center py-8">Nothing here yet. Start mining!</p>
+        )}
+        {items.map((item: any) => {
+          const name = item.ore ? item.ore.name : item.recipe?.name || item.id;
+          const rarity: OreRarity = item.ore?.rarity || 'common';
+          return (
+            <div key={item.id} className={`flex items-center justify-between px-3 py-2 border bg-card rounded-sm border-rarity-${rarity}`}>
+              <div className="flex items-center gap-3">
+                <span className={`font-mono-game text-xs text-rarity-${rarity}`}>{name}</span>
+                {item.ore && (
+                  <span className={`text-[9px] uppercase tracking-wider font-mono-game text-rarity-${rarity} opacity-60`}>{rarity}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono-game text-sm text-foreground">{item.qty}</span>
+                <button
+                  onClick={() => {
+                    // Show a prompt to choose between quick sell or marketplace
+                    const choice = window.confirm('List on marketplace? (Cancel for quick sell)');
+                    if (choice) {
+                      // Navigate to marketplace with pre-filled data
+                      // This would be better handled with state management, but for now redirect
+                      const marketplaceTab = document.querySelector('[data-tab="marketplace"]') as HTMLButtonElement;
+                      if (marketplaceTab) marketplaceTab.click();
+                    } else {
+                      dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: 1 });
+                    }
+                  }}
+                  className="font-mono-game text-[10px] uppercase px-2 py-0.5 border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
+                >
+                  Sell
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
