@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameProvider, useGame } from '@/hooks/useGameState';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
@@ -10,12 +10,13 @@ import { UpgradeShop } from '@/components/game/UpgradeShop';
 import { Marketplace } from '@/components/game/Marketplace';
 import { ChatRoom } from '@/components/game/ChatRoom';
 import { MachinesPanel } from '@/components/game/MachinesPanel';
-import { Marketplace } from '@/components/game/Marketplace';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
+import { ClansPanel } from '@/components/game/ClansPanel';
+import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'marketplace' | 'chat' | 'clans';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'upgrades' | 'marketplace' | 'chat' | 'clans';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
@@ -84,7 +85,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'foundry', label: 'Foundry' },
     { key: 'craft', label: 'Craft' },
     { key: 'machines', label: 'Machines', hidden: !hasMachines },
-    { key: 'market', label: 'Market' },
+    { key: 'marketplace', label: 'Market' },
     { key: 'upgrades', label: 'Upgrades' },
     { key: 'chat', label: 'Chat' },
   ];
@@ -131,6 +132,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         {tab === 'inventory' && <Inventory />}
         {tab === 'foundry' && <Foundry />}
         {tab === 'craft' && <CraftingStation />}
+        {tab === 'machines' && <MachinesPanel />}
         {tab === 'upgrades' && <UpgradeShop />}
         {tab === 'marketplace' && <Marketplace />}
         {tab === 'chat' && <ChatRoom />}
