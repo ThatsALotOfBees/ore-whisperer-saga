@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GameProvider, useGame } from '@/hooks/useGameState';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { MiningStation } from '@/components/game/MiningStation';
@@ -11,6 +12,7 @@ import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
+import { SaveIndicator } from '@/components/game/SaveIndicator';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
 
