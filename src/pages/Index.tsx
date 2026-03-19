@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { GameProvider, useGame } from '@/hooks/useGameState';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { MiningStation } from '@/components/game/MiningStation';
@@ -11,7 +11,6 @@ import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
-import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
 
