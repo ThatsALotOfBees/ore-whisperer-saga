@@ -104,7 +104,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         {tab === 'chat' && <ChatRoom />}
       </main>
 
-      <GameStateSyncer />
+      
       <DiscordButton />
 
       <footer className="border-t border-border px-4 py-2 text-center">
