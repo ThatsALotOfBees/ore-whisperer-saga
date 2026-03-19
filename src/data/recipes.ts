@@ -375,8 +375,8 @@ const machines: CraftingRecipe[] = [
     { itemId: 'machine_chassis', type: 'item', quantity: 1 },
     { itemId: 'gear_assembly', type: 'item', quantity: 2 },
     { itemId: 'shaft_component', type: 'item', quantity: 2 },
-    { itemId: 'logic_controller', type: 'item', quantity: 3 },
-    { itemId: 'processor', type: 'item', quantity: 1 },
+    { itemId: 'connector_array', type: 'item', quantity: 2 },
+    { itemId: 'rotary_component', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'Precision machining centerpiece' },
 
   // laser_cutter: built after cnc_mill; uses cnc_mill outputs (energy_channel, fine_wiring, micro_frame)
@@ -398,7 +398,7 @@ const machines: CraftingRecipe[] = [
   // Bootstrap: logic_controller requires chemical_reactor — move chemical_reactor to use laser_cutter outputs instead
   { id: 'chemical_reactor', name: 'Chemical Reactor', category: 'machine', ingredients: [
     { itemId: 'machine_chassis', type: 'item', quantity: 1 },
-    { itemId: 'pressure_core', type: 'item', quantity: 1 },
+    { itemId: 'control_housing', type: 'item', quantity: 1 },
     { itemId: 'resistor', type: 'item', quantity: 6 },
     { itemId: 'capacitor', type: 'item', quantity: 4 },
   ], outputQuantity: 1, description: 'Batch chemical synthesis unit' },
@@ -412,16 +412,17 @@ const machines: CraftingRecipe[] = [
 
   // ── Advanced Machines ────────────────────────────────────────────────────────
   { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [
-    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
+    { itemId: 'smart_structural_frame', type: 'item', quantity: 1 },
     { itemId: 'precision_matrix', type: 'item', quantity: 1 },
     { itemId: 'microcontroller', type: 'item', quantity: 4 },
-    { itemId: 'gpu_core', type: 'item', quantity: 1 },
+    { itemId: 'high_precision_housing', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
 
   { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [
-    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
     { itemId: 'quantum_structural_matrix', type: 'item', quantity: 1 },
+    { itemId: 'entanglement_housing', type: 'item', quantity: 1 },
     { itemId: 'hyper_conductor', type: 'item', quantity: 3 },
+    { itemId: 'phase_alignment_core', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'Quantum research facility' },
 ];
 
