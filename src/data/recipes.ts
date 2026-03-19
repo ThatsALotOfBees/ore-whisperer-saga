@@ -412,16 +412,17 @@ const machines: CraftingRecipe[] = [
 
   // ── Advanced Machines ────────────────────────────────────────────────────────
   { id: 'advanced_fab', name: 'Advanced Fabrication Plant', category: 'machine', ingredients: [
-    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
+    { itemId: 'smart_structural_frame', type: 'item', quantity: 1 },
     { itemId: 'precision_matrix', type: 'item', quantity: 1 },
     { itemId: 'microcontroller', type: 'item', quantity: 4 },
-    { itemId: 'gpu_core', type: 'item', quantity: 1 },
+    { itemId: 'high_precision_housing', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'State-of-the-art chip manufacturing' },
 
   { id: 'quantum_lab', name: 'Quantum Lab', category: 'machine', ingredients: [
-    { itemId: 'singularity_chassis', type: 'item', quantity: 1 },
     { itemId: 'quantum_structural_matrix', type: 'item', quantity: 1 },
+    { itemId: 'entanglement_housing', type: 'item', quantity: 1 },
     { itemId: 'hyper_conductor', type: 'item', quantity: 3 },
+    { itemId: 'phase_alignment_core', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'Quantum research facility' },
 ];
 
