@@ -1,4 +1,5 @@
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useCallback, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { ALL_ORES, ORE_MAP, rollMiningDrop, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
 
