@@ -15,25 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
 
-function GameStateSyncer() {
-  const { state } = useGame();
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(async () => {
-      const { lastDrop, smeltingJobs, ...saveable } = state;
-      await supabase.from('profiles').update({
-        game_state: saveable as any,
-        total_mined: state.totalMined,
-        currency: state.currency,
-      }).eq('user_id', user.id);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [user, state]);
-
-  return null;
-}
+// GameStateSyncer removed — saving is now handled inside GameProvider
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
