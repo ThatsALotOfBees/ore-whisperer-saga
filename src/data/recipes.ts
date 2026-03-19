@@ -375,8 +375,8 @@ const machines: CraftingRecipe[] = [
     { itemId: 'machine_chassis', type: 'item', quantity: 1 },
     { itemId: 'gear_assembly', type: 'item', quantity: 2 },
     { itemId: 'shaft_component', type: 'item', quantity: 2 },
-    { itemId: 'logic_controller', type: 'item', quantity: 3 },
-    { itemId: 'processor', type: 'item', quantity: 1 },
+    { itemId: 'connector_array', type: 'item', quantity: 2 },
+    { itemId: 'rotary_component', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'Precision machining centerpiece' },
 
   // laser_cutter: built after cnc_mill; uses cnc_mill outputs (energy_channel, fine_wiring, micro_frame)
