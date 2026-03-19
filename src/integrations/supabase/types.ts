@@ -162,20 +162,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      purchase_marketplace_listing: {
-        Args: { listing_id: string; buyer_id: string }
-        Returns: {
-          success: boolean
-          error?: string
-          item_id?: string
-          item_type?: string
-          item_name?: string
-          quantity?: number
-          price_per_unit?: number
-          total_cost?: number
-          seller_id?: string
-        }
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
