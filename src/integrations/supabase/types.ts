@@ -68,6 +68,45 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_listings: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          item_id: string
+          item_name: string
+          item_type: string
+          price_per_unit: number
+          quantity: number
+          seller_id: string
+          seller_username: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          item_id: string
+          item_name: string
+          item_type: string
+          price_per_unit: number
+          quantity: number
+          seller_id: string
+          seller_username: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_name?: string
+          item_type?: string
+          price_per_unit?: number
+          quantity?: number
+          seller_id?: string
+          seller_username?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

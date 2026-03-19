@@ -1,7 +1,8 @@
 import { useGame } from '@/hooks/useGameState';
 import { ORE_MAP } from '@/data/ores';
-import { FOUNDRY_TIERS } from '@/data/recipes';
-import { useState, useEffect } from 'react';
+import { FOUNDRY_TIERS, RECIPE_MAP } from '@/data/recipes';
+import { useState, useEffect, useMemo } from 'react';
+import { ItemBrowser, type BrowsableItem } from './ItemBrowser';
 
 export function Foundry() {
   const { state, dispatch, foundry } = useGame();
@@ -9,27 +10,72 @@ export function Foundry() {
   const [useRefined, setUseRefined] = useState(false);
   const [now, setNow] = useState(Date.now());
 
-  // Reactive timer for progress bars
   useEffect(() => {
     if (state.smeltingJobs.length === 0) return;
     const interval = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(interval);
   }, [state.smeltingJobs.length]);
 
-  const availableOres = useRefined
-    ? Object.entries(state.refinedOres).filter(([, qty]) => qty > 0)
-    : Object.entries(state.ores).filter(([, qty]) => qty > 0);
+  const handleSmeltAll = () => {
+    if (!selectedOre) return;
+    const ore = ORE_MAP[selectedOre];
+    if (!ore || state.foundryTier < ore.minSmeltTier) return;
 
-  const handleSmelt = () => {
+    const source = useRefined ? state.refinedOres : state.ores;
+    const available = source[selectedOre] || 0;
+    const freeSlots = foundry.slots - state.smeltingJobs.length;
+    const toSmelt = Math.min(available, freeSlots);
+
+    for (let i = 0; i < toSmelt; i++) {
+      dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
+    }
+  };
+
+  const handleSmeltOne = () => {
     if (!selectedOre) return;
     dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
   };
 
-  const handleRefine = (oreId: string) => {
-    dispatch({ type: 'REFINE_ORE', oreId, quantity: 1 });
+  const handleRefine = (item: BrowsableItem) => {
+    dispatch({ type: 'REFINE_ORE', oreId: item.id, quantity: 1 });
   };
 
   const nextTier = FOUNDRY_TIERS[state.foundryTier];
+
+  // Refinery items
+  const refineItems: BrowsableItem[] = useMemo(() => {
+    return Object.entries(state.ores)
+      .filter(([id, q]) => q > 0 && ORE_MAP[id])
+      .map(([id, qty]) => {
+        const ore = ORE_MAP[id];
+        return {
+          id,
+          name: ore.name,
+          rarity: ore.rarity,
+          quantity: qty,
+          extra: `${ore.refineCost}¤`,
+        };
+      });
+  }, [state.ores]);
+
+  // Smelt ore selection items
+  const smeltItems: BrowsableItem[] = useMemo(() => {
+    const source = useRefined ? state.refinedOres : state.ores;
+    return Object.entries(source)
+      .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
+      .map(([id, qty]) => {
+        const ore = ORE_MAP[id];
+        const canSmelt = state.foundryTier >= ore.minSmeltTier;
+        return {
+          id,
+          name: ore.name,
+          rarity: ore.rarity,
+          quantity: qty,
+          disabled: !canSmelt,
+          disabledReason: !canSmelt ? `T${ore.minSmeltTier}` : undefined,
+        };
+      });
+  }, [useRefined, state.ores, state.refinedOres, state.foundryTier]);
 
   return (
     <div className="p-4 space-y-6">
@@ -55,10 +101,7 @@ export function Foundry() {
                   <span className="font-mono-game text-[10px] text-primary">{Math.floor(pct)}%</span>
                 </div>
                 <div className="h-1 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-100"
-                    style={{ width: `${pct}%` }}
-                  />
+                  <div className="h-full bg-primary transition-all duration-100" style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -74,29 +117,25 @@ export function Foundry() {
         <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">
           Refine Ores (costs currency, increases smelt yield)
         </p>
-        <div className="grid gap-1 max-h-32 overflow-y-auto">
-          {Object.entries(state.ores).filter(([, q]) => q > 0).map(([id, qty]) => {
-            const ore = ORE_MAP[id];
-            if (!ore) return null;
-            return (
-              <div key={id} className="flex items-center justify-between px-3 py-1.5 border border-border bg-card rounded-sm">
-                <span className={`font-mono-game text-xs text-rarity-${ore.rarity}`}>{ore.name} ({qty})</span>
-                <button
-                  onClick={() => handleRefine(id)}
-                  disabled={state.currency < ore.refineCost}
-                  className="font-mono-game text-[10px] px-2 py-0.5 border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-                >
-                  Refine ({ore.refineCost}¤)
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        <ItemBrowser
+          items={refineItems}
+          onAction={handleRefine}
+          actionLabel="Refine"
+          actionDisabled={item => {
+            const ore = ORE_MAP[item.id];
+            return ore ? state.currency < ore.refineCost : true;
+          }}
+          placeholder="Search ores to refine..."
+          emptyMessage="No ores to refine"
+          showRarityFilter={false}
+          maxHeight="25vh"
+        />
       </div>
 
       {/* Smelt Controls */}
       <div className="space-y-2">
         <div className="flex gap-2 items-center">
+          <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground mr-2">Smelt</p>
           <button
             onClick={() => setUseRefined(false)}
             className={`font-mono-game text-[10px] uppercase px-2 py-1 border ${!useRefined ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}
@@ -111,32 +150,32 @@ export function Foundry() {
           </button>
         </div>
 
-        <div className="grid gap-1 max-h-32 overflow-y-auto">
-          {availableOres.map(([id, qty]) => {
-            const ore = ORE_MAP[id];
-            if (!ore) return null;
-            return (
-              <button
-                key={id}
-                onClick={() => setSelectedOre(id)}
-                className={`flex items-center justify-between px-3 py-1.5 border rounded-sm text-left transition-colors ${
-                  selectedOre === id ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-muted-foreground/30'
-                }`}
-              >
-                <span className={`font-mono-game text-xs text-rarity-${ore.rarity}`}>{ore.name}</span>
-                <span className="font-mono-game text-xs text-muted-foreground">{qty}</span>
-              </button>
-            );
-          })}
-        </div>
+        <ItemBrowser
+          items={smeltItems}
+          onSelect={item => setSelectedOre(item.id)}
+          selectedId={selectedOre}
+          placeholder="Search ores to smelt..."
+          emptyMessage="No ores available"
+          showRarityFilter={true}
+          maxHeight="25vh"
+        />
 
-        <button
-          onClick={handleSmelt}
-          disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
-          className="w-full font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
-        >
-          Start Smelting
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleSmeltOne}
+            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+          >
+            Smelt 1
+          </button>
+          <button
+            onClick={handleSmeltAll}
+            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+          >
+            Smelt All
+          </button>
+        </div>
       </div>
 
       {/* Foundry Upgrade */}
@@ -147,7 +186,7 @@ export function Foundry() {
           <div className="text-[10px] font-mono-game text-muted-foreground space-y-0.5">
             {nextTier.cost.map((c, i) => (
               <p key={i}>
-                {c.type === 'currency' ? `${c.quantity}¤` : `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots`}
+                {c.type === 'currency' ? `${c.quantity.toLocaleString()}¤` : c.type === 'ingot' ? `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots` : `${c.quantity}x ${RECIPE_MAP[c.itemId]?.name || c.itemId}`}
               </p>
             ))}
           </div>

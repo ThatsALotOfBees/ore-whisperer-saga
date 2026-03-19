@@ -1,15 +1,23 @@
 import { useGame } from '@/hooks/useGameState';
-import { CRAFTING_RECIPES, type CraftingRecipe } from '@/data/recipes';
-import { ORE_MAP } from '@/data/ores';
-import { useState } from 'react';
+import { CRAFTING_RECIPES, RECIPE_MAP, type CraftingRecipe } from '@/data/recipes';
+import { ORE_MAP, type OreRarity } from '@/data/ores';
+import { useState, useMemo } from 'react';
 
 type CatFilter = 'all' | 'component' | 'electronic' | 'machine';
 
 export function CraftingStation() {
   const { state, dispatch } = useGame();
   const [filter, setFilter] = useState<CatFilter>('all');
+  const [search, setSearch] = useState('');
 
-  const filtered = filter === 'all' ? CRAFTING_RECIPES : CRAFTING_RECIPES.filter(r => r.category === filter);
+  const filtered = useMemo(() => {
+    let recipes = filter === 'all' ? CRAFTING_RECIPES : CRAFTING_RECIPES.filter(r => r.category === filter);
+    if (search) {
+      const q = search.toLowerCase();
+      recipes = recipes.filter(r => r.name.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
+    }
+    return recipes;
+  }, [filter, search]);
 
   const canCraft = (recipe: CraftingRecipe) => {
     if (recipe.requiredMachine && !state.unlockedMachines.includes(recipe.requiredMachine)) return false;
@@ -31,6 +39,15 @@ export function CraftingStation() {
     { key: 'machine', label: 'Machines' },
   ];
 
+  const getCategoryColor = (cat: string): string => {
+    switch (cat) {
+      case 'component': return 'text-muted-foreground';
+      case 'electronic': return 'text-rarity-rare';
+      case 'machine': return 'text-rarity-epic';
+      default: return 'text-muted-foreground';
+    }
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -40,6 +57,16 @@ export function CraftingStation() {
         </span>
       </div>
 
+      {/* Search */}
+      <input
+        type="text"
+        placeholder="Search recipes..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent"
+      />
+
+      {/* Category filters */}
       <div className="flex gap-1">
         {filters.map(f => (
           <button
@@ -54,7 +81,16 @@ export function CraftingStation() {
         ))}
       </div>
 
-      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+      {/* Results count */}
+      <p className="font-mono-game text-[9px] text-muted-foreground/60">
+        {filtered.length} recipe{filtered.length !== 1 ? 's' : ''}
+      </p>
+
+      {/* Recipe list */}
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
+        {filtered.length === 0 && (
+          <p className="text-xs text-muted-foreground/50 text-center py-6">No recipes match your search</p>
+        )}
         {filtered.map(recipe => {
           const craftable = canCraft(recipe);
           const locked = recipe.requiredMachine && !state.unlockedMachines.includes(recipe.requiredMachine);
@@ -67,13 +103,13 @@ export function CraftingStation() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex items-center gap-2">
                   <span className="font-mono-game text-xs text-foreground">{recipe.name}</span>
-                  <span className="font-mono-game text-[10px] text-muted-foreground ml-2">×{recipe.outputQuantity}</span>
+                  <span className="font-mono-game text-[10px] text-muted-foreground">x{recipe.outputQuantity}</span>
+                  <span className={`font-mono-game text-[8px] uppercase tracking-wider ${getCategoryColor(recipe.category)}`}>
+                    {recipe.category}
+                  </span>
                 </div>
-                {recipe.category === 'machine' && (
-                  <span className="font-mono-game text-[9px] uppercase tracking-wider text-accent">Machine</span>
-                )}
               </div>
 
               <p className="text-[10px] text-muted-foreground">{recipe.description}</p>
@@ -89,7 +125,7 @@ export function CraftingStation() {
                   const has = hasIngredient(ing.itemId, ing.type, ing.quantity);
                   const label = ing.type === 'ingot'
                     ? (ORE_MAP[ing.itemId]?.name || ing.itemId) + ' Ingot'
-                    : CRAFTING_RECIPES.find(r => r.id === ing.itemId)?.name || ing.itemId;
+                    : RECIPE_MAP[ing.itemId]?.name || ing.itemId;
                   return (
                     <span
                       key={i}
@@ -97,7 +133,7 @@ export function CraftingStation() {
                         has ? 'border-primary/30 text-primary' : 'border-destructive/30 text-destructive'
                       }`}
                     >
-                      {ing.quantity}× {label}
+                      {ing.quantity}x {label}
                     </span>
                   );
                 })}

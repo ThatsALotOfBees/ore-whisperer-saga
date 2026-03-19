@@ -1,7 +1,9 @@
 import { useGame } from '@/hooks/useGameState';
-import { ORE_MAP, RARITY_ORDER, type OreRarity } from '@/data/ores';
+import { ORE_MAP, type OreRarity } from '@/data/ores';
 import { RECIPE_MAP } from '@/data/recipes';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { playSound } from '@/lib/audio';
+import { ItemBrowser, type BrowsableItem } from './ItemBrowser';
 
 type TabType = 'ores' | 'refined' | 'ingots' | 'items';
 
@@ -16,17 +18,75 @@ export function Inventory() {
     { key: 'items', label: 'Items' },
   ];
 
-  const getItems = () => {
+  const items: BrowsableItem[] = useMemo(() => {
     switch (tab) {
-      case 'ores': return Object.entries(state.ores).map(([id, qty]) => ({ id, qty, ore: ORE_MAP[id] })).filter(i => i.ore);
-      case 'refined': return Object.entries(state.refinedOres).map(([id, qty]) => ({ id, qty, ore: ORE_MAP[id] })).filter(i => i.ore);
-      case 'ingots': return Object.entries(state.ingots).map(([id, qty]) => ({ id, qty, ore: ORE_MAP[id] })).filter(i => i.ore);
-      case 'items': return Object.entries(state.items).map(([id, qty]) => ({ id, qty, recipe: RECIPE_MAP[id] }));
+      case 'ores':
+        return Object.entries(state.ores)
+          .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
+          .map(([id, qty]) => ({
+            id,
+            name: ORE_MAP[id].name,
+            rarity: ORE_MAP[id].rarity,
+            quantity: qty,
+            category: `tier-${ORE_MAP[id].tier}`,
+          }));
+      case 'refined':
+        return Object.entries(state.refinedOres)
+          .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
+          .map(([id, qty]) => ({
+            id,
+            name: ORE_MAP[id].name + ' (Refined)',
+            rarity: ORE_MAP[id].rarity,
+            quantity: qty,
+            category: `tier-${ORE_MAP[id].tier}`,
+          }));
+      case 'ingots':
+        return Object.entries(state.ingots)
+          .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
+          .map(([id, qty]) => ({
+            id,
+            name: ORE_MAP[id].name + ' Ingot',
+            rarity: ORE_MAP[id].rarity,
+            quantity: qty,
+            category: `tier-${ORE_MAP[id].tier}`,
+          }));
+      case 'items':
+        return Object.entries(state.items)
+          .filter(([, qty]) => qty > 0)
+          .map(([id, qty]) => {
+            const recipe = RECIPE_MAP[id];
+            return {
+              id,
+              name: recipe?.name || id,
+              rarity: (recipe?.category === 'machine' ? 'epic' : recipe?.category === 'electronic' ? 'rare' : 'uncommon') as OreRarity,
+              quantity: qty,
+              category: recipe?.category || 'unknown',
+            };
+          });
+    }
+  }, [tab, state.ores, state.refinedOres, state.ingots, state.items]);
+
+  const sellType = tab === 'ores' ? 'ore' : tab === 'refined' ? 'refined' : tab === 'ingots' ? 'ingot' : 'item';
+
+  const handleSell = (item: BrowsableItem) => {
+    playSound('click');
+    dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: 1 });
+  };
+
+  const handleSelect = (item: BrowsableItem) => {
+    if (tab === 'ores' || tab === 'refined') {
+      playSound('success');
+      dispatch({ type: 'START_SMELT', oreId: item.id, refined: tab === 'refined' });
     }
   };
 
-  const items = getItems();
-  const sellType = tab === 'ores' ? 'ore' : tab === 'refined' ? 'refined' : tab === 'ingots' ? 'ingot' : 'item';
+  const itemCategories = tab === 'items'
+    ? [
+        { key: 'component', label: 'Components' },
+        { key: 'electronic', label: 'Electronics' },
+        { key: 'machine', label: 'Machines' },
+      ]
+    : undefined;
 
   return (
     <div className="p-4 space-y-4">
@@ -35,7 +95,7 @@ export function Inventory() {
         <span className="font-mono-game text-sm text-accent">{state.currency.toLocaleString()} ¤</span>
       </div>
 
-      <div className="flex gap-1">
+      <div className="flex gap-1 flex-wrap">
         {tabs.map(t => (
           <button
             key={t.key}
