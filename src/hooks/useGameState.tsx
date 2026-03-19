@@ -486,11 +486,14 @@ function migrateState(saved: any): GameState {
   return state;
 }
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 interface GameContextType {
   state: GameState;
   dispatch: React.Dispatch<Action>;
   miningSpeed: number;
   foundry: FoundryUpgrade;
+  saveStatus: SaveStatus;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -509,7 +512,9 @@ function loadState(): GameState {
 export function GameProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(gameReducer, undefined, loadState);
   const [loaded, setLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedRef = useRef<string>('');
 
   // Load from Supabase on mount
@@ -534,25 +539,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Save to localStorage + debounced Supabase save on every state change
+  // Save to localStorage + debounced Supabase save
   const saveToSupabase = useCallback(async (gameState: GameState) => {
     try {
+      setSaveStatus('saving');
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setSaveStatus('idle'); return; }
       const { lastDrop, smeltingJobs, ...saveable } = gameState;
-      await supabase.from('profiles').update({
+      const { error } = await supabase.from('profiles').update({
         game_state: saveable as any,
         total_mined: gameState.totalMined,
         currency: gameState.currency,
       }).eq('user_id', user.id);
-    } catch {}
+      setSaveStatus(error ? 'error' : 'saved');
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch {
+      setSaveStatus('error');
+    }
   }, []);
 
   useEffect(() => {
     const { lastDrop, smeltingJobs, ...toSave } = state;
     localStorage.setItem('voidmarket_state', JSON.stringify(toSave));
 
-    // Debounced Supabase save (500ms)
     const serialized = JSON.stringify(toSave);
     if (serialized === lastSavedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -587,7 +597,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const foundry = getCurrentFoundry(state);
 
   return (
-    <GameContext.Provider value={{ state, dispatch, miningSpeed, foundry }}>
+    <GameContext.Provider value={{ state, dispatch, miningSpeed, foundry, saveStatus }}>
       {children}
     </GameContext.Provider>
   );
