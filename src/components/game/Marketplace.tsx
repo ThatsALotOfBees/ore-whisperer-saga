@@ -154,7 +154,7 @@ export function Marketplace() {
     setLoading(true);
 
     // Use the SECURITY DEFINER function to atomically deactivate the listing
-    const { data, error } = await supabase.rpc('purchase_marketplace_listing' as any, {
+    const { data, error } = await (supabase.rpc as any)('purchase_marketplace_listing', {
       listing_id: listing.id,
       buyer_id: user.id,
     }) as { data: any; error: any };
