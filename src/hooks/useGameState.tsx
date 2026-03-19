@@ -40,6 +40,9 @@ const initialState: GameState = {
 type Action =
   | { type: 'MINE_TICK' }
   | { type: 'SELL_ITEM'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number }
+  | { type: 'CREATE_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; pricePerUnit: number }
+  | { type: 'BUY_ITEM'; listingId: string }
+  | { type: 'CANCEL_LISTING'; listingId: string }
   | { type: 'REFINE_ORE'; oreId: string; quantity: number }
   | { type: 'START_SMELT'; oreId: string; refined: boolean }
   | { type: 'COMPLETE_SMELT'; jobIndex: number }
@@ -264,6 +267,29 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'LOAD_STATE':
       return action.state;
+
+    case 'CREATE_LISTING': {
+      const { itemId, itemType, quantity, pricePerUnit } = action;
+      const source = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
+      const current = state[source][itemId] || 0;
+      if (current < quantity) return state;
+
+      const newSource = { ...state[source] };
+      newSource[itemId] = current - quantity;
+      if (newSource[itemId] <= 0) delete newSource[itemId];
+
+      return { ...state, [source]: newSource };
+    }
+
+    case 'BUY_ITEM': {
+      // This will be handled by the marketplace component
+      return state;
+    }
+
+    case 'CANCEL_LISTING': {
+      // This will be handled by the marketplace component  
+      return state;
+    }
 
     default:
       return state;

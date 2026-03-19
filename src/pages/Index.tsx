@@ -6,12 +6,13 @@ import { Inventory } from '@/components/game/Inventory';
 import { Foundry } from '@/components/game/Foundry';
 import { CraftingStation } from '@/components/game/CraftingStation';
 import { UpgradeShop } from '@/components/game/UpgradeShop';
+import { Marketplace } from '@/components/game/Marketplace';
 import { ChatRoom } from '@/components/game/ChatRoom';
 import { ClansPanel } from '@/components/game/ClansPanel';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'chat' | 'clans';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'upgrades' | 'marketplace' | 'chat' | 'clans';
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'mine', label: 'Mine' },
@@ -19,6 +20,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'foundry', label: 'Foundry' },
   { key: 'craft', label: 'Craft' },
   { key: 'upgrades', label: 'Upgrades' },
+  { key: 'marketplace', label: 'Market' },
   { key: 'chat', label: 'Chat' },
   { key: 'clans', label: 'Clans' },
 ];
@@ -87,6 +89,7 @@ function GameContent() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
+            data-tab={t.key}
             className={`font-mono-game text-[11px] uppercase tracking-[0.15em] px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-primary text-primary bg-primary/5'
@@ -105,6 +108,7 @@ function GameContent() {
         {tab === 'foundry' && <Foundry />}
         {tab === 'craft' && <CraftingStation />}
         {tab === 'upgrades' && <UpgradeShop />}
+        {tab === 'marketplace' && <Marketplace />}
         {tab === 'chat' && <ChatRoom />}
         {tab === 'clans' && <ClansPanel />}
       </main>

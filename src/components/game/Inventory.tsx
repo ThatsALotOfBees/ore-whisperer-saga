@@ -67,7 +67,18 @@ export function Inventory() {
               <div className="flex items-center gap-3">
                 <span className="font-mono-game text-sm text-foreground">{item.qty}</span>
                 <button
-                  onClick={() => dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: 1 })}
+                  onClick={() => {
+                    // Show a prompt to choose between quick sell or marketplace
+                    const choice = window.confirm('List on marketplace? (Cancel for quick sell)');
+                    if (choice) {
+                      // Navigate to marketplace with pre-filled data
+                      // This would be better handled with state management, but for now redirect
+                      const marketplaceTab = document.querySelector('[data-tab="marketplace"]') as HTMLButtonElement;
+                      if (marketplaceTab) marketplaceTab.click();
+                    } else {
+                      dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: 1 });
+                    }
+                  }}
                   className="font-mono-game text-[10px] uppercase px-2 py-0.5 border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
                 >
                   Sell
