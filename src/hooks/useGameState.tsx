@@ -486,11 +486,14 @@ function migrateState(saved: any): GameState {
   return state;
 }
 
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 interface GameContextType {
   state: GameState;
   dispatch: React.Dispatch<Action>;
   miningSpeed: number;
   foundry: FoundryUpgrade;
+  saveStatus: SaveStatus;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
