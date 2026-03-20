@@ -1,41 +1,15 @@
 import type { ItemRarity } from '@/types/clan';
 import { REQUEST_LIMITS, RARITY_DONATION_BONUS, getPerkMultiplier } from '@/types/clan';
-import type { RECIPE_MAP } from '@/data/recipes';
-import type { OreRarity } from '@/data/ores';
+import { getItemRarity } from './item-utils';
 
-export function getRarityFromOre(oreRarity: OreRarity): ItemRarity {
-  const rarityMap: Record<OreRarity, ItemRarity> = {
-    'common': 'common',
-    'uncommon': 'uncommon',
-    'rare': 'rare',
-    'epic': 'epic',
-    'legendary': 'legendary',
-    'mythic': 'mythic',
-    'exotic': 'exotic',
-    'artifact': 'artifact',
-  };
-  return rarityMap[oreRarity];
+export function getRarityFromOre(oreRarity: string): ItemRarity {
+  return oreRarity as ItemRarity;
 }
 
-export function getItemRarity(itemId: string, recipes: typeof RECIPE_MAP, ores: Record<string, any>): ItemRarity {
-  if (ores[itemId]) {
-    return getRarityFromOre(ores[itemId].rarity);
-  }
-  const recipe = recipes[itemId];
-  if (!recipe) return 'common';
-  const maxIngredientRarity = recipe.ingredients
-    .map(ing => getItemRarity(ing.itemId, recipes, ores))
-    .reduce((max, curr) => {
-      const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic', 'artifact'];
-      return rarityOrder.indexOf(curr) > rarityOrder.indexOf(max) ? curr : max;
-    }, 'common' as ItemRarity);
-  if (recipe.requiredMachine) {
-    const rarityOrder: ItemRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic', 'artifact'];
-    const machineIndex = rarityOrder.indexOf(maxIngredientRarity);
-    return rarityOrder[Math.min(machineIndex + 1, 7)];
-  }
-  return maxIngredientRarity;
+export function getItemRarityFromId(itemId: string): ItemRarity {
+  return getItemRarity(itemId) as ItemRarity;
 }
+
 
 export function getMaxRequestQuantity(
   itemRarity: ItemRarity,

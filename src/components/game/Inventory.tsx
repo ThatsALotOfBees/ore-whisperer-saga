@@ -4,6 +4,7 @@ import { RECIPE_MAP } from '@/data/recipes';
 import { useState, useMemo } from 'react';
 import { playSound } from '@/lib/audio';
 import { ItemBrowser, type BrowsableItem } from './ItemBrowser';
+import { getItemRarity } from '@/lib/item-utils';
 
 type TabType = 'ores' | 'refined' | 'ingots' | 'items';
 
@@ -59,7 +60,7 @@ export function Inventory() {
             return {
               id,
               name: recipe?.name || id,
-              rarity: (recipe?.category === 'machine' ? 'epic' : recipe?.category === 'electronic' ? 'rare' : 'uncommon') as OreRarity,
+              rarity: getItemRarity(id),
               quantity: qty,
               category: recipe?.category || 'unknown',
             };

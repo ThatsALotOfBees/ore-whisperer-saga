@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/hooks/useGameState';
-import { type OreRarity, SPECIAL_MINING_DROPS } from '@/data/ores';
+import { type OreRarity } from '@/data/ores';
+import { getItemRarity } from '@/lib/item-utils';
 
 export function MiningStation() {
   const { state, dispatch, miningSpeed } = useGame();
@@ -70,9 +71,7 @@ export function MiningStation() {
   useEffect(() => {
     if (state.lastSpecialDrop) {
       const id = ++dropIdRef.current;
-      const specialDrop = SPECIAL_MINING_DROPS.find(d => d.name === state.lastSpecialDrop);
-      const rarity = specialDrop ? specialDrop.rarity : 'artifact';
-      
+      const rarity = getItemRarity(state.lastSpecialDrop);
       setDrops(prev => [...prev.slice(-4), { id, name: `★ ${state.lastSpecialDrop}`, rarity, qty: 1 }]);
       setTimeout(() => setDrops(prev => prev.filter(d => d.id !== id)), 3000);
     }
