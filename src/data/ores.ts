@@ -157,6 +157,18 @@ export const ALL_ORES: Ore[] = [
 export const ORE_MAP: Record<string, Ore> = {};
 ALL_ORES.forEach(ore => { ORE_MAP[ore.id] = ore; });
 
+// Special mining drops (not ores — returned separately)
+export interface SpecialDrop {
+  id: string;
+  name: string;
+  chance: number; // flat chance per mine tick
+}
+
+export const SPECIAL_MINING_DROPS: SpecialDrop[] = [
+  { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.01 },
+  { id: 'seed_pack', name: 'Seed Pack', chance: 0.01 },
+];
+
 export function rollMiningDrop(luckMultiplier: number = 1): Ore | null {
   const shuffled = [...ALL_ORES].sort(() => Math.random() - 0.5);
   for (const ore of shuffled) {
@@ -167,6 +179,10 @@ export function rollMiningDrop(luckMultiplier: number = 1): Ore | null {
   // Fallback: return a random common ore
   const commons = ALL_ORES.filter(o => o.rarity === 'common');
   return commons[Math.floor(Math.random() * commons.length)];
+}
+
+export function rollSpecialDrops(): SpecialDrop[] {
+  return SPECIAL_MINING_DROPS.filter(drop => Math.random() < drop.chance);
 }
 
 export const RARITY_ORDER: OreRarity[] = [
