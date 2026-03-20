@@ -1,4 +1,4 @@
-export type OreRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic';
+export type OreRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic' | 'artifact';
 
 export interface Ore {
   id: string;
@@ -162,11 +162,12 @@ export interface SpecialDrop {
   id: string;
   name: string;
   chance: number; // flat chance per mine tick
+  rarity: OreRarity;
 }
 
 export const SPECIAL_MINING_DROPS: SpecialDrop[] = [
-  { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.01 },
-  { id: 'seed_pack', name: 'Seed Pack', chance: 0.01 },
+  { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.001, rarity: 'artifact' },
+  { id: 'seed_pack', name: 'Seed Pack', chance: 0.01, rarity: 'artifact' },
 ];
 
 export function rollMiningDrop(luckMultiplier: number = 1): Ore | null {
@@ -186,5 +187,5 @@ export function rollSpecialDrops(): SpecialDrop[] {
 }
 
 export const RARITY_ORDER: OreRarity[] = [
-  'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic',
+  'common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'exotic', 'artifact'
 ];

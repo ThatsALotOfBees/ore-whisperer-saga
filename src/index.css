@@ -34,6 +34,7 @@
     --ore-legendary: 0 85% 55%;
     --ore-mythic: 45 100% 55%;
     --ore-exotic: 0 0% 95%;
+    --ore-artifact: 330 100% 71%;
     --foundry-heat: 15 100% 50%;
     --power-cyan: 199 89% 48%;
     --void-violet: 270 80% 45%;
@@ -84,6 +85,7 @@
   .text-rarity-legendary { color: hsl(var(--ore-legendary)); }
   .text-rarity-mythic { color: hsl(var(--ore-mythic)); }
   .text-rarity-exotic { color: hsl(var(--ore-exotic)); text-shadow: 0 0 8px hsl(var(--ore-exotic) / 0.6); }
+  .text-rarity-artifact { color: hsl(var(--ore-artifact)); text-shadow: 0 0 10px hsl(var(--ore-artifact) / 0.8); }
   .bg-rarity-common { background-color: hsl(var(--ore-common) / 0.15); }
   .bg-rarity-uncommon { background-color: hsl(var(--ore-uncommon) / 0.15); }
   .bg-rarity-rare { background-color: hsl(var(--ore-rare) / 0.15); }
@@ -91,6 +93,7 @@
   .bg-rarity-legendary { background-color: hsl(var(--ore-legendary) / 0.15); }
   .bg-rarity-mythic { background-color: hsl(var(--ore-mythic) / 0.15); }
   .bg-rarity-exotic { background-color: hsl(var(--ore-exotic) / 0.15); }
+  .bg-rarity-artifact { background-color: hsl(var(--ore-artifact) / 0.15); }
   .border-rarity-common { border-color: hsl(var(--ore-common) / 0.3); }
   .border-rarity-uncommon { border-color: hsl(var(--ore-uncommon) / 0.3); }
   .border-rarity-rare { border-color: hsl(var(--ore-rare) / 0.3); }
@@ -98,6 +101,7 @@
   .border-rarity-legendary { border-color: hsl(var(--ore-legendary) / 0.3); }
   .border-rarity-mythic { border-color: hsl(var(--ore-mythic) / 0.3); }
   .border-rarity-exotic { border-color: hsl(var(--ore-exotic) / 0.3); }
+  .border-rarity-artifact { border-color: hsl(var(--ore-artifact) / 0.4); }
   .custom-scrollbar {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--accent) / 0.5) hsl(var(--border));
