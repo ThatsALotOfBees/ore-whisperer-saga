@@ -130,7 +130,7 @@ export function GardenPanel() {
                 disabled={seedEntries.length === 0 || gh.plots.every(p => p.plantId !== null)}
                 className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
               >
-                Auto-Replant
+                Harvest & Replant
               </button>
               <span className="font-mono-game text-[8px] text-muted-foreground/50">
                 Speed Lv{gh.growSpeedLevel} · Dupe {getHarvestDupeChance(gh.harvestLevel) * 100}%

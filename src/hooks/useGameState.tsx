@@ -573,10 +573,28 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'REPLANT_ALL': {
       const { greenhouseIndex } = action;
-      const gh = state.greenhouses[greenhouseIndex];
+      let currentState = state;
+      let gh = currentState.greenhouses[greenhouseIndex];
       if (!gh) return state;
 
-      let currentSeeds = { ...state.seeds };
+      // 1. Harvest all ready plants first
+      for (let pi = 0; pi < gh.plots.length; pi++) {
+        const plot = gh.plots[pi];
+        if (plot.plantId && plot.plantedAt) {
+          const plant = PLANT_MAP[plot.plantId];
+          const growSpeed = getGrowSpeedMultiplier(gh.growSpeedLevel);
+          const adjustedGrowTime = plant.growTimeMs / growSpeed;
+          const elapsed = Date.now() - plot.plantedAt;
+          
+          if (elapsed >= adjustedGrowTime) {
+            currentState = gameReducer(currentState, { type: 'HARVEST_PLANT', greenhouseIndex, plotIndex: pi });
+          }
+        }
+      }
+
+      // 2. Refresh gh reference from the updated state
+      gh = currentState.greenhouses[greenhouseIndex];
+      let currentSeeds = { ...currentState.seeds };
       const rarityPriority: PlantRarity[] = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 
       const newPlots = gh.plots.map(p => {
@@ -596,8 +614,8 @@ function gameReducer(state: GameState, action: Action): GameState {
         return p;
       });
 
-      const newGreenhouses = state.greenhouses.map((g, gi) => (gi === greenhouseIndex ? { ...g, plots: newPlots } : g));
-      return { ...state, seeds: currentSeeds, greenhouses: newGreenhouses };
+      const finalGreenhouses = currentState.greenhouses.map((g, gi) => (gi === greenhouseIndex ? { ...g, plots: newPlots } : g));
+      return { ...currentState, seeds: currentSeeds, greenhouses: finalGreenhouses };
     }
 
     case 'SMELT_EVERYTHING': {
