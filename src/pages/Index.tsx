@@ -66,7 +66,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
           <h1 className="font-mono-game text-sm font-bold tracking-[0.15em] uppercase text-primary">
             VOID<span className="text-accent">—</span>MARKET
           </h1>
-          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">v0.3</span>
+          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">v0.54</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="font-mono-game text-[10px] text-accent">{profile?.username}</span>
