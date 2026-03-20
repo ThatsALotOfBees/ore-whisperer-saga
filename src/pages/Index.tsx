@@ -40,12 +40,55 @@ function GameContent() {
   );
 }
 
+const CURRENT_VERSION = 'v0.64';
+
+function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
+    >
+      <div className="max-w-md w-full bg-card border border-accent p-6 space-y-4 shadow-2xl">
+        <div className="space-y-1">
+          <h2 className="font-mono-game text-sm text-accent tracking-widest uppercase">Major Update: Garden Expansion</h2>
+          <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
+        </div>
+        
+        <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
+          <p>The Void Market has expanded! A massive botanical discovery has brought <span className="text-accent">120+ new plant species</span> to your greenhouses.</p>
+          <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+            <li>New Rarities: <span className="text-pink-400">Mythic</span> & <span className="text-cyan-400">Crystalized</span></li>
+            <li>20 New Plants per Rarity Tier</li>
+            <li>Reworked Harvest: Now includes Duplicate Chance!</li>
+            <li>Consolidated "Harvest & Replant" Action</li>
+            <li>Marketplace Stability Improvements</li>
+          </ul>
+        </div>
+
+        <button
+          onClick={onAcknowledge}
+          className="w-full font-mono-game text-xs uppercase py-3 border border-accent text-accent hover:bg-accent/10 transition-colors"
+        >
+          Acknowledge & Sync
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const { user, profile, signOut, isGuest } = useAuth();
-  const { state } = useGame();
+  const { state, dispatch } = useGame();
 
   const hasMachines = state.unlockedMachines.length > 0;
   const hasGarden = state.greenhouses.length > 0;
+
+  const showUpdate = state.lastViewedVersion !== CURRENT_VERSION;
+
+  const handleAcknowledge = () => {
+    dispatch({ type: 'ACKNOWLEDGE_UPDATE', version: CURRENT_VERSION });
+  };
 
   const TABS: { key: Tab; label: string; hidden?: boolean }[] = [
     { key: 'mine', label: 'Mine' },
@@ -61,12 +104,16 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <AnimatePresence>
+        {showUpdate && <UpdateNotification onAcknowledge={handleAcknowledge} />}
+      </AnimatePresence>
+
       <header className="border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="font-mono-game text-sm font-bold tracking-[0.15em] uppercase text-primary">
             VOID<span className="text-accent">—</span>MARKET
           </h1>
-          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">v0.54</span>
+          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">{CURRENT_VERSION}</span>
         </div>
         <div className="flex items-center gap-4">
           <span className="font-mono-game text-[10px] text-accent">{profile?.username}</span>
