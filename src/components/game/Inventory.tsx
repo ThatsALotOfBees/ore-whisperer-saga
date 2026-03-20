@@ -10,6 +10,7 @@ type TabType = 'ores' | 'refined' | 'ingots' | 'items';
 export function Inventory() {
   const { state, dispatch } = useGame();
   const [tab, setTab] = useState<TabType>('ores');
+  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>({});
 
   const tabs: { key: TabType; label: string }[] = [
     { key: 'ores', label: 'Raw Ores' },
@@ -68,9 +69,15 @@ export function Inventory() {
 
   const sellType = tab === 'ores' ? 'ore' : tab === 'refined' ? 'refined' : tab === 'ingots' ? 'ingot' : 'item';
 
+  const getSellQty = (itemId: string) => sellQuantities[itemId] || 1;
+
   const handleSell = (item: BrowsableItem) => {
+    const qty = Math.min(getSellQty(item.id), item.quantity);
+    if (qty < 1) return;
     playSound('click');
-    dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: 1 });
+    dispatch({ type: 'SELL_ITEM', itemId: item.id, itemType: sellType, quantity: qty });
+    // Reset quantity after sell
+    setSellQuantities(prev => ({ ...prev, [item.id]: 1 }));
   };
 
   const handleSelect = (item: BrowsableItem) => {
@@ -78,6 +85,10 @@ export function Inventory() {
       playSound('success');
       dispatch({ type: 'START_SMELT', oreId: item.id, refined: tab === 'refined' });
     }
+  };
+
+  const handleSellQtyChange = (itemId: string, qty: number) => {
+    setSellQuantities(prev => ({ ...prev, [itemId]: qty }));
   };
 
   const itemCategories = tab === 'items'
@@ -119,6 +130,9 @@ export function Inventory() {
         showRarityFilter={true}
         categories={itemCategories}
         maxHeight="50vh"
+        showSellQty={true}
+        sellQuantities={sellQuantities}
+        onSellQtyChange={handleSellQtyChange}
       />
     </div>
   );
