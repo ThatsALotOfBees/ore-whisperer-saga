@@ -66,6 +66,15 @@ export function MiningStation() {
     }
   }, [state.lastDrop]);
 
+  // Show special drop notifications
+  useEffect(() => {
+    if (state.lastSpecialDrop) {
+      const id = ++dropIdRef.current;
+      setDrops(prev => [...prev.slice(-4), { id, name: `★ ${state.lastSpecialDrop}`, rarity: 'legendary' as OreRarity, qty: 1 }]);
+      setTimeout(() => setDrops(prev => prev.filter(d => d.id !== id)), 3000);
+    }
+  }, [state.lastSpecialDrop]);
+
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
   const currentProgress = isAutoMining ? autoProgress : progress;
