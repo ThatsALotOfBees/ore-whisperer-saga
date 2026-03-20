@@ -141,11 +141,11 @@ export function Marketplace() {
     setLoading(false);
   };
 
-  const handleBuy = async (listing: MarketListing) => {
+  const handleBuy = async (listing: MarketListing, buyQty: number) => {
     if (!user || isGuest) return;
     if (listing.seller_id === user.id) return;
 
-    const totalCost = listing.price_per_unit * listing.quantity;
+    const totalCost = listing.price_per_unit * buyQty;
     if (state.currency < totalCost) {
       showStatus('Not enough currency', false);
       return;
@@ -153,10 +153,10 @@ export function Marketplace() {
 
     setLoading(true);
 
-    // Use the SECURITY DEFINER function to atomically deactivate the listing
     const { data, error } = await (supabase.rpc as any)('purchase_marketplace_listing', {
-      listing_id: listing.id,
-      buyer_id: user.id,
+      p_listing_id: listing.id,
+      p_buyer_id: user.id,
+      p_quantity: buyQty,
     }) as { data: any; error: any };
 
     if (error || !data?.success) {
@@ -317,13 +317,24 @@ export function Marketplace() {
                           by {listing.seller_username}
                         </span>
                         {!isMine && (
-                          <button
-                            onClick={() => handleBuy(listing)}
-                            disabled={!canBuy}
-                            className="font-mono-game text-[10px] uppercase px-3 py-1 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-                          >
-                            Buy
-                          </button>
+                          <div className="flex gap-1.5">
+                            {listing.quantity > 1 && (
+                              <button
+                                onClick={() => handleBuy(listing, 1)}
+                                disabled={loading || state.currency < listing.price_per_unit}
+                                className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-primary/50 text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+                              >
+                                Buy 1
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleBuy(listing, listing.quantity)}
+                              disabled={!canBuy}
+                              className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+                            >
+                              {listing.quantity > 1 ? `Buy All (${listing.quantity})` : 'Buy'}
+                            </button>
+                          </div>
                         )}
                         {isMine && (
                           <span className="font-mono-game text-[9px] text-primary uppercase">Your Listing</span>
