@@ -1,5 +1,5 @@
 export type ItemType = 'ore' | 'refined' | 'ingot' | 'component' | 'electronic' | 'machine';
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic';
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'exotic' | 'artifact';
 
 export interface RequestLimitConfig {
   [key: string]: {
@@ -16,6 +16,7 @@ export const REQUEST_LIMITS: RequestLimitConfig = {
   legendary: { maxQuantity: 3, cooldownMinutes: 120 },
   mythic: { maxQuantity: 2, cooldownMinutes: 150 },
   exotic: { maxQuantity: 1, cooldownMinutes: 180 },
+  artifact: { maxQuantity: 1, cooldownMinutes: 240 },
 };
 
 export const RARITY_DONATION_BONUS: Record<ItemRarity, number> = {
@@ -26,6 +27,7 @@ export const RARITY_DONATION_BONUS: Record<ItemRarity, number> = {
   legendary: 10,
   mythic: 20,
   exotic: 40,
+  artifact: 100,
 };
 
 export function getPerkMultiplier(perkType: string, level: number): number {
