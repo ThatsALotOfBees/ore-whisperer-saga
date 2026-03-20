@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useGame } from '@/hooks/useGameState';
-import { ORE_MAP } from '@/data/ores';
+import { ORE_MAP, type OreRarity } from '@/data/ores';
 import { RECIPE_MAP } from '@/data/recipes';
+import { getItemRarity } from '@/lib/item-utils';
 
 interface MarketListing {
   id: string;
@@ -64,23 +65,22 @@ export function Marketplace() {
 
   // Get items player can sell
   const sellableItems = useMemo(() => {
-    const items: { id: string; name: string; type: 'ore' | 'refined' | 'ingot' | 'item'; qty: number }[] = [];
+    const items: { id: string; name: string; type: 'ore' | 'refined' | 'ingot' | 'item'; qty: number; rarity: OreRarity }[] = [];
 
     Object.entries(state.ores).filter(([, q]) => q > 0).forEach(([id, qty]) => {
       const ore = ORE_MAP[id];
-      if (ore) items.push({ id, name: ore.name, type: 'ore', qty });
+      if (ore) items.push({ id, name: ore.name, type: 'ore', qty, rarity: ore.rarity });
     });
     Object.entries(state.refinedOres).filter(([, q]) => q > 0).forEach(([id, qty]) => {
       const ore = ORE_MAP[id];
-      if (ore) items.push({ id, name: ore.name + ' (Refined)', type: 'refined', qty });
+      if (ore) items.push({ id, name: ore.name + ' (Refined)', type: 'refined', qty, rarity: ore.rarity });
     });
     Object.entries(state.ingots).filter(([, q]) => q > 0).forEach(([id, qty]) => {
       const ore = ORE_MAP[id];
-      if (ore) items.push({ id, name: ore.name + ' Ingot', type: 'ingot', qty });
+      if (ore) items.push({ id, name: ore.name + ' Ingot', type: 'ingot', qty, rarity: ore.rarity });
     });
     Object.entries(state.items).filter(([, q]) => q > 0).forEach(([id, qty]) => {
-      const recipe = RECIPE_MAP[id];
-      items.push({ id, name: recipe?.name || id, type: 'item', qty });
+      items.push({ id, name: RECIPE_MAP[id]?.name || id, type: 'item', qty, rarity: getItemRarity(id) });
     });
 
     return items;
@@ -291,7 +291,9 @@ export function Marketplace() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-mono-game text-xs text-foreground">{listing.item_name}</span>
+                        <span className={`font-mono-game text-xs text-rarity-${getItemRarity(listing.item_id)}`}>
+                          {listing.item_name}
+                        </span>
                         <span className="font-mono-game text-[9px] text-muted-foreground ml-2">
                           ({listing.item_type})
                         </span>
@@ -425,7 +427,9 @@ export function Marketplace() {
           {myListings.map(listing => (
             <div key={listing.id} className="border border-border bg-card rounded-sm p-3 flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <span className="font-mono-game text-xs text-foreground block truncate">{listing.item_name}</span>
+                <span className={`font-mono-game text-xs block truncate text-rarity-${getItemRarity(listing.item_id)}`}>
+                  {listing.item_name}
+                </span>
                 <span className="font-mono-game text-[10px] text-muted-foreground">
                   x{listing.quantity} @ {listing.price_per_unit.toLocaleString()} ¤
                   <span className="text-accent ml-2">= {(listing.quantity * listing.price_per_unit).toLocaleString()} ¤</span>
