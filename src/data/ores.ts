@@ -108,8 +108,8 @@ const epicOres: Ore[] = [
 
 // ─── Legendary (Tier 5) ── 10 ores ──────────────────────────────────────────
 const legendaryOres: Ore[] = [
-  { id: 'diamond', name: 'Diamond Ore', tier: 5, rarity: 'legendary', miningChance: 0.002, smeltYield: 1, refineMultiplier: 2.5, refineCost: 100, value: 200, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 13 },
-  { id: 'emerald', name: 'Emerald Ore', tier: 5, rarity: 'legendary', miningChance: 0.002, smeltYield: 1, refineMultiplier: 2.3, refineCost: 90, value: 180, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 13 },
+  { id: 'diamond', name: 'Diamond Ore', tier: 5, rarity: 'legendary', miningChance: 0.002, smeltYield: 1, refineMultiplier: 2.5, refineCost: 100, value: 200, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 12 },
+  { id: 'emerald', name: 'Emerald Ore', tier: 5, rarity: 'legendary', miningChance: 0.002, smeltYield: 1, refineMultiplier: 2.3, refineCost: 90, value: 180, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 12 },
   { id: 'ruby', name: 'Ruby Ore', tier: 5, rarity: 'legendary', miningChance: 0.0018, smeltYield: 1, refineMultiplier: 2.3, refineCost: 90, value: 180, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 13 },
   { id: 'sapphire', name: 'Sapphire Ore', tier: 5, rarity: 'legendary', miningChance: 0.0018, smeltYield: 1, refineMultiplier: 2.3, refineCost: 90, value: 175, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 13 },
   { id: 'alexandrite', name: 'Alexandrite Ore', tier: 5, rarity: 'legendary', miningChance: 0.0015, smeltYield: 1, refineMultiplier: 2.5, refineCost: 110, value: 220, hardness: 'extreme', processingDifficulty: 'extreme', minSmeltTier: 13 },
