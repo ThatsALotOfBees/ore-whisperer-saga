@@ -153,7 +153,7 @@ export function Marketplace() {
 
     setLoading(true);
 
-    const { data, error } = await (supabase.rpc as any)('purchase_marketplace_listing', {
+    const { data, error } = await (supabase.rpc as any)('buy_marketplace_item', {
       p_listing_id: listing.id,
       p_buyer_id: user.id,
       p_quantity: buyQty,
