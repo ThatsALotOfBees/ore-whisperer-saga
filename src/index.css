@@ -32,7 +32,7 @@
     --ore-rare: 270 70% 60%;
     --ore-epic: 25 100% 55%;
     --ore-legendary: 0 85% 55%;
-    --ore-mythic: 45 100% 55%;
+    --ore-mythic: 325 100% 50%;
     --ore-exotic: 0 0% 95%;
     --ore-artifact: 330 100% 71%;
     --foundry-heat: 15 100% 50%;
@@ -83,7 +83,7 @@
   .text-rarity-rare { color: hsl(var(--ore-rare)); }
   .text-rarity-epic { color: hsl(var(--ore-epic)); }
   .text-rarity-legendary { color: hsl(var(--ore-legendary)); }
-  .text-rarity-mythic { color: hsl(var(--ore-mythic)); }
+  .text-rarity-mythic { color: hsl(var(--ore-mythic)); text-shadow: 0 0 10px hsl(var(--ore-mythic) / 0.7); }
   .text-rarity-exotic { color: hsl(var(--ore-exotic)); text-shadow: 0 0 8px hsl(var(--ore-exotic) / 0.6); }
   .text-rarity-artifact { color: hsl(var(--ore-artifact)); text-shadow: 0 0 10px hsl(var(--ore-artifact) / 0.8); }
   .bg-rarity-common { background-color: hsl(var(--ore-common) / 0.15); }
