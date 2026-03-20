@@ -202,21 +202,31 @@ export function Foundry() {
           maxHeight="25vh"
         />
 
-        <div className="flex gap-2">
-          <button
-            onClick={handleSmeltOne}
-            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
-            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
-          >
-            Smelt 1
-          </button>
-          <button
-            onClick={handleSmeltAll}
-            disabled={!selectedOre}
-            className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-          >
-            Smelt All
-          </button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={handleSmeltOne}
+              disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+              className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+            >
+              Smelt 1
+            </button>
+            <button
+              onClick={handleSmeltAll}
+              disabled={!selectedOre}
+              className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+            >
+              Smelt All
+            </button>
+          </div>
+          {state.foundryTier >= 8 && (
+            <button
+              onClick={() => dispatch({ type: 'SMELT_EVERYTHING' })}
+              className="w-full font-mono-game text-xs uppercase tracking-wider py-2 border border-purple-400 text-purple-400 hover:bg-purple-400/10 transition-colors"
+            >
+              Smelt All Inventory
+            </button>
+          )}
         </div>
       </div>
 

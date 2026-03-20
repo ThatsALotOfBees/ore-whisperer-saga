@@ -3,13 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { ALL_ORES, ORE_MAP, rollMiningDrop, rollSpecialDrops, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
 import {
-  PLANT_MAP, rollSeedFromPack,
+  PLANT_MAP, ALL_PLANTS, rollSeedFromPack,
   PLOT_COST_BASE, PLOT_COST_MULTIPLIER,
   GROW_SPEED_UPGRADE_BASE, GROW_SPEED_UPGRADE_MULTIPLIER,
   HARVEST_UPGRADE_BASE, HARVEST_UPGRADE_MULTIPLIER,
   MAX_PLOTS_PER_GREENHOUSE, GROW_SPEED_MAX_LEVEL, HARVEST_MAX_LEVEL,
   GARDEN_TICK_INTERVAL,
-  type PlantDef,
+  type PlantDef, type PlantRarity,
 } from '@/data/garden';
 
 export interface SmeltingJob {
@@ -114,6 +114,8 @@ type Action =
   | { type: 'ADD_PLOT'; greenhouseIndex: number }
   | { type: 'UPGRADE_GROW_SPEED'; greenhouseIndex: number }
   | { type: 'UPGRADE_HARVEST'; greenhouseIndex: number }
+  | { type: 'REPLANT_ALL'; greenhouseIndex: number }
+  | { type: 'SMELT_EVERYTHING' }
   | { type: 'TICK_GARDEN' };
 
 function getMiningSpeed(state: GameState): number {
@@ -567,6 +569,60 @@ function gameReducer(state: GameState, action: Action): GameState {
       });
 
       return { ...state, seeds: newSeeds, greenhouses: newGreenhouses };
+    }
+
+    case 'REPLANT_ALL': {
+      const { greenhouseIndex } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh) return state;
+
+      let currentSeeds = { ...state.seeds };
+      const rarityPriority: PlantRarity[] = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+
+      const newPlots = gh.plots.map(p => {
+        if (p.plantId) return p;
+
+        // Find best seed
+        for (const rarity of rarityPriority) {
+          const seedsOfRarity = ALL_PLANTS.filter(plant => plant.rarity === rarity);
+          const availableSeed = seedsOfRarity.find(s => currentSeeds[s.id] > 0);
+
+          if (availableSeed) {
+            currentSeeds[availableSeed.id]--;
+            if (currentSeeds[availableSeed.id] <= 0) delete currentSeeds[availableSeed.id];
+            return { plantId: availableSeed.id, plantedAt: Date.now(), lastIncomeTick: Date.now() };
+          }
+        }
+        return p;
+      });
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => (gi === greenhouseIndex ? { ...g, plots: newPlots } : g));
+      return { ...state, seeds: currentSeeds, greenhouses: newGreenhouses };
+    }
+
+    case 'SMELT_EVERYTHING': {
+      if (state.foundryTier < 8) return state;
+
+      let newState = state;
+      // Smelt all eligible ores
+      const oreEntries = Object.entries(state.ores).filter(([, q]) => q > 0);
+      for (const [id, qty] of oreEntries) {
+        const ore = ORE_MAP[id];
+        if (ore && ore.minSmeltTier <= state.foundryTier) {
+          newState = gameReducer(newState, { type: 'START_SMELT', oreId: id, refined: false, quantity: qty });
+        }
+      }
+
+      // Smelt all eligible refined ores
+      const refinedEntries = Object.entries(state.refinedOres).filter(([, q]) => q > 0);
+      for (const [id, qty] of refinedEntries) {
+        const ore = ORE_MAP[id];
+        if (ore && ore.minSmeltTier <= state.foundryTier) {
+          newState = gameReducer(newState, { type: 'START_SMELT', oreId: id, refined: true, quantity: qty });
+        }
+      }
+
+      return newState;
     }
 
     case 'HARVEST_PLANT': {

@@ -125,6 +125,13 @@ export function GardenPanel() {
               Plots ({gh.plots.length}/{MAX_PLOTS_PER_GREENHOUSE})
             </span>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => { dispatch({ type: 'REPLANT_ALL', greenhouseIndex: selectedGH }); playSound('success'); }}
+                disabled={seedEntries.length === 0 || gh.plots.every(p => p.plantId !== null)}
+                className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-primary text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
+              >
+                Auto-Replant
+              </button>
               <span className="font-mono-game text-[8px] text-muted-foreground/50">
                 Speed Lv{gh.growSpeedLevel} · Harvest Lv{gh.harvestLevel}
               </span>
