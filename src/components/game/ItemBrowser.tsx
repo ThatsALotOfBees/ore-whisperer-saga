@@ -25,6 +25,9 @@ interface ItemBrowserProps {
   showRarityFilter?: boolean;
   categories?: { key: string; label: string }[];
   maxHeight?: string;
+  showSellQty?: boolean;
+  sellQuantities?: Record<string, number>;
+  onSellQtyChange?: (itemId: string, qty: number) => void;
 }
 
 export function ItemBrowser({
@@ -39,6 +42,9 @@ export function ItemBrowser({
   showRarityFilter = true,
   categories,
   maxHeight = '50vh',
+  showSellQty = false,
+  sellQuantities = {},
+  onSellQtyChange,
 }: ItemBrowserProps) {
   const [search, setSearch] = useState('');
   const [rarityFilter, setRarityFilter] = useState<OreRarity | 'all'>('all');
@@ -53,7 +59,6 @@ export function ItemBrowser({
     });
   }, [items, search, rarityFilter, categoryFilter]);
 
-  // Group by rarity for display
   const sortedItems = useMemo(() => {
     return [...filtered].sort((a, b) => {
       const ri = RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity);
@@ -62,7 +67,6 @@ export function ItemBrowser({
     });
   }, [filtered]);
 
-  // Count items per rarity for badges
   const rarityCounts = useMemo(() => {
     const counts: Partial<Record<OreRarity, number>> = {};
     items.forEach(item => {
@@ -73,7 +77,6 @@ export function ItemBrowser({
 
   return (
     <div className="space-y-2">
-      {/* Search bar */}
       <input
         type="text"
         placeholder={placeholder}
@@ -82,7 +85,6 @@ export function ItemBrowser({
         className="w-full bg-card border border-border px-3 py-1.5 font-mono-game text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-accent"
       />
 
-      {/* Category filter */}
       {categories && categories.length > 0 && (
         <div className="flex gap-1 flex-wrap">
           <button
@@ -107,7 +109,6 @@ export function ItemBrowser({
         </div>
       )}
 
-      {/* Rarity filter */}
       {showRarityFilter && (
         <div className="flex gap-1 flex-wrap">
           <button
@@ -132,12 +133,10 @@ export function ItemBrowser({
         </div>
       )}
 
-      {/* Results count */}
       <p className="font-mono-game text-[9px] text-muted-foreground/60">
         {sortedItems.length} result{sortedItems.length !== 1 ? 's' : ''}
       </p>
 
-      {/* Item list */}
       <div className="space-y-1 overflow-y-auto custom-scrollbar" style={{ maxHeight }}>
         {sortedItems.length === 0 && (
           <p className="text-xs text-muted-foreground/50 text-center py-6">{emptyMessage}</p>
@@ -146,6 +145,7 @@ export function ItemBrowser({
           const isSelected = selectedId === item.id;
           const isDisabled = item.disabled;
           const isActionDisabled = actionDisabled ? actionDisabled(item) : false;
+          const sellQty = sellQuantities[item.id] || 1;
 
           return (
             <div
@@ -176,13 +176,49 @@ export function ItemBrowser({
                   <span className="font-mono-game text-[9px] text-destructive">{item.disabledReason}</span>
                 )}
                 {onAction && !isDisabled && (
-                  <button
-                    onClick={e => { e.stopPropagation(); onAction(item); }}
-                    disabled={isActionDisabled}
-                    className="font-mono-game text-[10px] uppercase px-2 py-0.5 border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-                  >
-                    {actionLabel || 'Action'}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {showSellQty && item.quantity > 1 && (
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          onClick={e => { e.stopPropagation(); onSellQtyChange?.(item.id, Math.max(1, sellQty - (sellQty >= 100 ? 10 : sellQty >= 10 ? 5 : 1))); }}
+                          className="font-mono-game text-[9px] px-1 py-0.5 border border-border text-muted-foreground hover:text-foreground hover:border-accent transition-colors"
+                        >
+                          −
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={item.quantity}
+                          value={sellQty}
+                          onClick={e => e.stopPropagation()}
+                          onChange={e => {
+                            const v = Math.max(1, Math.min(item.quantity, parseInt(e.target.value) || 1));
+                            onSellQtyChange?.(item.id, v);
+                          }}
+                          className="w-10 bg-card border border-border px-1 py-0.5 font-mono-game text-[10px] text-center text-foreground focus:outline-none focus:border-accent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          onClick={e => { e.stopPropagation(); onSellQtyChange?.(item.id, Math.min(item.quantity, sellQty + (sellQty >= 100 ? 10 : sellQty >= 10 ? 5 : 1))); }}
+                          className="font-mono-game text-[9px] px-1 py-0.5 border border-border text-muted-foreground hover:text-foreground hover:border-accent transition-colors"
+                        >
+                          +
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); onSellQtyChange?.(item.id, item.quantity); }}
+                          className="font-mono-game text-[8px] uppercase px-1 py-0.5 border border-border text-muted-foreground hover:text-foreground hover:border-accent transition-colors"
+                        >
+                          All
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      onClick={e => { e.stopPropagation(); onAction(item); }}
+                      disabled={isActionDisabled}
+                      className="font-mono-game text-[10px] uppercase px-2 py-0.5 border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
+                    >
+                      {actionLabel || 'Action'}{showSellQty && item.quantity > 1 ? ` (${sellQty})` : ''}
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
