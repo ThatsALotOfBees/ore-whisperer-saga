@@ -51,6 +51,7 @@ export interface GameState {
   miningUpgrades: Record<string, number>;
   foundryTier: number;
   smeltingJobs: SmeltingJob[];
+  smeltingQueue: SmeltingJob[];
   unlockedMachines: string[];
   automationJobs: AutomationJob[];
   autoMinerEnabled: boolean;
@@ -70,6 +71,7 @@ const initialState: GameState = {
   miningUpgrades: { drill_speed: 0, ore_scanner: 0, multi_drill: 0 },
   foundryTier: 1,
   smeltingJobs: [],
+  smeltingQueue: [],
   unlockedMachines: [],
   automationJobs: [],
   autoMinerEnabled: false,
@@ -94,8 +96,9 @@ type Action =
   | { type: 'RETURN_FROM_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; itemName: string }
   | { type: 'RECEIVE_PURCHASE'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; totalCost: number }
   | { type: 'REFINE_ORE'; oreId: string; quantity: number }
-  | { type: 'START_SMELT'; oreId: string; refined: boolean }
+  | { type: 'START_SMELT'; oreId: string; refined: boolean; quantity?: number }
   | { type: 'COMPLETE_SMELT'; jobIndex: number }
+  | { type: 'CANCEL_SMELTIC_JOB'; jobIndex: number; isQueue: boolean }
   | { type: 'UPGRADE_MINING'; upgradeId: string }
   | { type: 'UPGRADE_FOUNDRY' }
   | { type: 'CRAFT_ITEM'; recipeId: string }
@@ -247,30 +250,40 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'START_SMELT': {
-      const foundry = getCurrentFoundry(state);
-      if (state.smeltingJobs.length >= foundry.slots) return state;
-
-      const { oreId, refined } = action;
+      const { oreId, refined, quantity = 1 } = action;
       const ore = ORE_MAP[oreId];
-      if (!ore) return state;
+      if (!ore || state.foundryTier < ore.minSmeltTier) return state;
 
-      if (state.foundryTier < ore.minSmeltTier) return state;
+      const foundry = getCurrentFoundry(state);
+      const sourceKey = refined ? 'refinedOres' : 'ores';
+      const available = state[sourceKey][oreId] || 0;
+      const toStartCount = Math.min(quantity, available);
+      if (toStartCount <= 0) return state;
 
-      const source = refined ? state.refinedOres : state.ores;
-      if ((source[oreId] || 0) < 1) return state;
-
-      const newSource = { ...source };
-      newSource[oreId] = (newSource[oreId] || 0) - 1;
+      let newState = { ...state };
+      const newSource = { ...state[sourceKey] };
+      newSource[oreId] = available - toStartCount;
       if (newSource[oreId] <= 0) delete newSource[oreId];
+      newState[sourceKey] = newSource;
 
       const baseDuration = 5000;
       const processingFactor = PROCESSING_SPEED_FACTOR[ore.processingDifficulty] || 1.0;
       const duration = baseDuration / (foundry.speedMultiplier * processingFactor);
 
-      const job: SmeltingJob = { oreId, refined, startTime: Date.now(), duration };
-      const stateKey = refined ? 'refinedOres' : 'ores';
+      const newActiveJobs = [...state.smeltingJobs];
+      const newQueuedJobs = [...state.smeltingQueue];
 
-      return { ...state, [stateKey]: newSource, smeltingJobs: [...state.smeltingJobs, job] };
+      for (let i = 0; i < toStartCount; i++) {
+        const job: SmeltingJob = { oreId, refined, startTime: 0, duration };
+        if (newActiveJobs.length < foundry.slots) {
+          job.startTime = Date.now();
+          newActiveJobs.push(job);
+        } else {
+          newQueuedJobs.push(job);
+        }
+      }
+
+      return { ...newState, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
     }
 
     case 'COMPLETE_SMELT': {
@@ -286,9 +299,46 @@ function gameReducer(state: GameState, action: Action): GameState {
       const newIngots = { ...state.ingots };
       newIngots[job.oreId] = (newIngots[job.oreId] || 0) + yieldAmount;
 
-      const newJobs = state.smeltingJobs.filter((_, i) => i !== action.jobIndex);
+      let newActiveJobs = state.smeltingJobs.filter((_, i) => i !== action.jobIndex);
+      let newQueuedJobs = [...state.smeltingQueue];
 
-      return { ...state, ingots: newIngots, smeltingJobs: newJobs };
+      // Fill empty slot from queue
+      const foundry = getCurrentFoundry(state);
+      if (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
+        const nextJob = { ...newQueuedJobs.shift()! };
+        nextJob.startTime = Date.now();
+        newActiveJobs.push(nextJob);
+      }
+
+      return { ...state, ingots: newIngots, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
+    }
+
+    case 'CANCEL_SMELTIC_JOB': {
+      const { jobIndex, isQueue } = action;
+      const job = isQueue ? state.smeltingQueue[jobIndex] : state.smeltingJobs[jobIndex];
+      if (!job) return state;
+
+      const sourceKey = job.refined ? 'refinedOres' : 'ores';
+      const newSource = { ...state[sourceKey] };
+      newSource[job.oreId] = (newSource[job.oreId] || 0) + 1;
+
+      let newActiveJobs = [...state.smeltingJobs];
+      let newQueuedJobs = [...state.smeltingQueue];
+
+      if (isQueue) {
+        newQueuedJobs.splice(jobIndex, 1);
+      } else {
+        newActiveJobs.splice(jobIndex, 1);
+        // Start next job from queue if it was an active job cancelled
+        const foundry = getCurrentFoundry(state);
+        if (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
+          const nextJob = { ...newQueuedJobs.shift()! };
+          nextJob.startTime = Date.now();
+          newActiveJobs.push(nextJob);
+        }
+      }
+
+      return { ...state, [sourceKey]: newSource, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
     }
 
     case 'UPGRADE_MINING': {
@@ -712,6 +762,7 @@ function migrateState(saved: any): GameState {
   if (!state.seeds) state.seeds = {};
   if (!state.greenhouses) state.greenhouses = [];
   if (!state.lastSpecialDrop) state.lastSpecialDrop = null;
+  if (!state.smeltingQueue) state.smeltingQueue = [];
 
   return state;
 }

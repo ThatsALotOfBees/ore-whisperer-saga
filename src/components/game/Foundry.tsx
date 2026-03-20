@@ -23,17 +23,18 @@ export function Foundry() {
 
     const source = useRefined ? state.refinedOres : state.ores;
     const available = source[selectedOre] || 0;
-    const freeSlots = foundry.slots - state.smeltingJobs.length;
-    const toSmelt = Math.min(available, freeSlots);
+    if (available <= 0) return;
 
-    for (let i = 0; i < toSmelt; i++) {
-      dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
-    }
+    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined, quantity: available });
   };
 
   const handleSmeltOne = () => {
     if (!selectedOre) return;
-    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined });
+    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined, quantity: 1 });
+  };
+
+  const handleCancelJob = (index: number, isQueue: boolean) => {
+    dispatch({ type: 'CANCEL_SMELTIC_JOB', jobIndex: index, isQueue });
   };
 
   const handleRefine = (item: BrowsableItem) => {
@@ -95,10 +96,22 @@ export function Foundry() {
             const elapsed = now - job.startTime;
             const pct = Math.min(100, (elapsed / job.duration) * 100);
             return (
-              <div key={i} className="border border-border bg-card px-3 py-2 rounded-sm">
+              <div key={i} className="border border-border bg-card px-3 py-2 rounded-sm group relative">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-mono-game text-xs text-foreground">{ore?.name || job.oreId} {job.refined ? '(Refined)' : ''}</span>
-                  <span className="font-mono-game text-[10px] text-primary">{Math.floor(pct)}%</span>
+                  <div className="flex flex-col">
+                    <span className="font-mono-game text-xs text-foreground">{ore?.name || job.oreId} {job.refined ? '(Refined)' : ''}</span>
+                    <span className="font-mono-game text-[8px] text-muted-foreground uppercase">Active</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono-game text-[10px] text-primary">{Math.floor(pct)}%</span>
+                    <button
+                      onClick={() => handleCancelJob(i, false)}
+                      className="p-1 hover:text-destructive text-muted-foreground transition-colors"
+                      title="Cancel Smelting"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                  </div>
                 </div>
                 <div className="h-1 bg-muted rounded-full overflow-hidden">
                   <div className="h-full bg-primary transition-all duration-100" style={{ width: `${pct}%` }} />
@@ -111,6 +124,35 @@ export function Foundry() {
           )}
         </div>
       </div>
+
+      {/* Smelting Queue */}
+      {state.smeltingQueue.length > 0 && (
+        <div className="space-y-2">
+          <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">
+            Smelting Queue ({state.smeltingQueue.length})
+          </p>
+          <div className="max-h-[20vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
+            {state.smeltingQueue.map((job, i) => {
+              const ore = ORE_MAP[job.oreId];
+              return (
+                <div key={i} className="border border-border/50 bg-card/50 px-3 py-1.5 rounded-sm flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="font-mono-game text-[10px] text-foreground/80">{ore?.name || job.oreId} {job.refined ? '(Refined)' : ''}</span>
+                    <span className="font-mono-game text-[7px] text-muted-foreground/60 uppercase tracking-tighter">Waiting for slot...</span>
+                  </div>
+                  <button
+                    onClick={() => handleCancelJob(i, true)}
+                    className="p-1 hover:text-destructive text-muted-foreground/40 transition-colors"
+                    title="Cancel Queue"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Refinery Section */}
       <div className="space-y-2">
@@ -170,7 +212,7 @@ export function Foundry() {
           </button>
           <button
             onClick={handleSmeltAll}
-            disabled={!selectedOre || state.smeltingJobs.length >= foundry.slots}
+            disabled={!selectedOre}
             className="flex-1 font-mono-game text-xs uppercase tracking-wider py-2 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
           >
             Smelt All
