@@ -141,8 +141,8 @@ export function getGrowSpeedMultiplier(level: number): number {
   return 1 + level * 0.15; // 15% faster per level
 }
 
-export function getHarvestMultiplier(level: number): number {
-  return 1 + level * 0.2; // 20% more seeds/bonus per level
+export function getHarvestDupeChance(level: number): number {
+  return level * 0.05; // 5% chance per level (max 50% at lv10)
 }
 
 function gameReducer(state: GameState, action: Action): GameState {
@@ -640,9 +640,12 @@ function gameReducer(state: GameState, action: Action): GameState {
       const elapsed = Date.now() - plot.plantedAt;
       if (elapsed < adjustedGrowTime) return state; // not ready
 
-      const harvestMult = getHarvestMultiplier(gh.harvestLevel);
-      const bonus = Math.floor(plant.harvestBonus * harvestMult);
-      const seedReturn = Math.floor(plant.seedReturnBase * harvestMult);
+      const dupeChance = getHarvestDupeChance(gh.harvestLevel);
+      const isDupe = Math.random() < dupeChance;
+      const multiplier = isDupe ? 2 : 1;
+
+      const bonus = Math.floor(plant.harvestBonus * multiplier);
+      const seedReturn = Math.floor(plant.seedReturnBase * multiplier);
 
       const newSeeds = { ...state.seeds };
       newSeeds[plot.plantId] = (newSeeds[plot.plantId] || 0) + seedReturn;

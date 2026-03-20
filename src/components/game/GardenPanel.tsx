@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGame, getGrowSpeedMultiplier, getHarvestMultiplier, type Greenhouse } from '@/hooks/useGameState';
+import { useGame, getGrowSpeedMultiplier, getHarvestDupeChance, type Greenhouse } from '@/hooks/useGameState';
 import {
   PLANT_MAP, ALL_PLANTS,
   PLOT_COST_BASE, PLOT_COST_MULTIPLIER,
@@ -133,7 +133,7 @@ export function GardenPanel() {
                 Auto-Replant
               </button>
               <span className="font-mono-game text-[8px] text-muted-foreground/50">
-                Speed Lv{gh.growSpeedLevel} · Harvest Lv{gh.harvestLevel}
+                Speed Lv{gh.growSpeedLevel} · Dupe {getHarvestDupeChance(gh.harvestLevel) * 100}%
               </span>
             </div>
           </div>
@@ -266,7 +266,7 @@ export function GardenPanel() {
                 disabled={state.currency < harvestCost}
                 className="font-mono-game text-[9px] uppercase py-2 border border-border text-muted-foreground hover:text-foreground hover:border-accent disabled:opacity-30 transition-colors"
               >
-                Harvest Lv{gh.harvestLevel + 1}<br />
+                Dupe Chance {getHarvestDupeChance(gh.harvestLevel + 1) * 100}%<br />
                 <span className="text-accent text-[8px]">{harvestCost.toLocaleString()} ¤</span>
               </button>
             )}
