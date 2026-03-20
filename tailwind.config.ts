@@ -4,6 +4,11 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  safelist: [
+    { pattern: /text-rarity-(common|uncommon|rare|epic|legendary|mythic|exotic|artifact)/ },
+    { pattern: /bg-rarity-(common|uncommon|rare|epic|legendary|mythic|exotic|artifact)/ },
+    { pattern: /border-rarity-(common|uncommon|rare|epic|legendary|mythic|exotic|artifact)/ },
+  ],
   theme: {
     container: {
       center: true,
@@ -42,9 +47,11 @@ export default {
           common: "hsl(var(--ore-common))",
           uncommon: "hsl(var(--ore-uncommon))",
           rare: "hsl(var(--ore-rare))",
+          epic: "hsl(var(--ore-epic))",
+          legendary: "hsl(var(--ore-legendary))",
+          mythic: "hsl(var(--ore-mythic))",
           exotic: "hsl(var(--ore-exotic))",
-          void: "hsl(var(--ore-void))",
-          radioactive: "hsl(var(--ore-radioactive))",
+          artifact: "hsl(var(--ore-artifact))",
         },
         heat: "hsl(var(--foundry-heat))",
         cyan: "hsl(var(--power-cyan))",
