@@ -10,13 +10,12 @@ import { UpgradeShop } from '@/components/game/UpgradeShop';
 import { ChatRoom } from '@/components/game/ChatRoom';
 import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
+import { GardenPanel } from '@/components/game/GardenPanel';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'market' | 'upgrades' | 'chat';
-
-// GameStateSyncer removed — saving is now handled inside GameProvider
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'market' | 'upgrades' | 'chat';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -46,6 +45,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   const { state } = useGame();
 
   const hasMachines = state.unlockedMachines.length > 0;
+  const hasGarden = state.greenhouses.length > 0;
 
   const TABS: { key: Tab; label: string; hidden?: boolean }[] = [
     { key: 'mine', label: 'Mine' },
@@ -53,6 +53,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'foundry', label: 'Foundry' },
     { key: 'craft', label: 'Craft' },
     { key: 'machines', label: 'Machines', hidden: !hasMachines },
+    { key: 'garden', label: 'Garden', hidden: !hasGarden },
     { key: 'market', label: 'Market' },
     { key: 'upgrades', label: 'Upgrades' },
     { key: 'chat', label: 'Chat' },
@@ -108,6 +109,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
             {tab === 'foundry' && <Foundry />}
             {tab === 'craft' && <CraftingStation />}
             {tab === 'machines' && <MachinesPanel />}
+            {tab === 'garden' && <GardenPanel />}
             {tab === 'market' && <Marketplace />}
             {tab === 'upgrades' && <UpgradeShop />}
             {tab === 'chat' && <ChatRoom />}
