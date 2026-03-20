@@ -1,10 +1,9 @@
 
--- Update purchase_marketplace_listing to support partial purchases
--- Drops the old 2-argument version and replaces it with a 3-argument version (id, buyer_id, quantity)
-
+-- Drop ALL versions of the function to be absolutely sure we have a clean slate
 DROP FUNCTION IF EXISTS public.purchase_marketplace_listing(uuid, uuid);
+DROP FUNCTION IF EXISTS public.purchase_marketplace_listing(uuid, uuid, integer);
 
-CREATE OR REPLACE FUNCTION public.purchase_marketplace_listing(p_listing_id uuid, p_buyer_id uuid, p_quantity integer)
+CREATE OR REPLACE FUNCTION public.purchase_marketplace_listing(p_buyer_id uuid, p_listing_id uuid, p_quantity integer)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -64,5 +63,4 @@ BEGIN
 END;
 $$;
 
--- Grant execute to authenticated users
 GRANT EXECUTE ON FUNCTION public.purchase_marketplace_listing(uuid, uuid, integer) TO authenticated;
