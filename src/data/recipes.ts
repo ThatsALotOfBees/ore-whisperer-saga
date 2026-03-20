@@ -424,6 +424,12 @@ const machines: CraftingRecipe[] = [
     { itemId: 'hyper_conductor', type: 'item', quantity: 3 },
     { itemId: 'phase_alignment_core', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: 'Quantum research facility' },
+
+  // ── Greenhouse ──────────────────────────────────────────────────────────────
+  { id: 'greenhouse', name: 'Greenhouse', category: 'machine', ingredients: [
+    { itemId: 'plant_in_a_boot', type: 'item', quantity: 1 },
+    { itemId: 'veinite', type: 'ingot', quantity: 3 },
+  ], outputQuantity: 1, description: 'A structure for growing plants. Unlocks the Garden tab.' },
 ];
 
 // ─── Combined Recipe List ────────────────────────────────────────────────────

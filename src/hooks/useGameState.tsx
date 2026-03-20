@@ -1,7 +1,16 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ALL_ORES, ORE_MAP, rollMiningDrop, type Ore, type OreRarity } from '@/data/ores';
+import { ALL_ORES, ORE_MAP, rollMiningDrop, rollSpecialDrops, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
+import {
+  PLANT_MAP, rollSeedFromPack,
+  PLOT_COST_BASE, PLOT_COST_MULTIPLIER,
+  GROW_SPEED_UPGRADE_BASE, GROW_SPEED_UPGRADE_MULTIPLIER,
+  HARVEST_UPGRADE_BASE, HARVEST_UPGRADE_MULTIPLIER,
+  MAX_PLOTS_PER_GREENHOUSE, GROW_SPEED_MAX_LEVEL, HARVEST_MAX_LEVEL,
+  GARDEN_TICK_INTERVAL,
+  type PlantDef,
+} from '@/data/garden';
 
 export interface SmeltingJob {
   oreId: string;
@@ -18,12 +27,27 @@ export interface AutomationJob {
   lastCraft: number;
 }
 
+// ─── Garden Types ────────────────────────────────────────────────────────────
+export interface GardenPlot {
+  plantId: string | null; // null = empty
+  plantedAt: number | null; // timestamp
+  lastIncomeTick: number; // last time passive income was collected
+}
+
+export interface Greenhouse {
+  id: string;
+  plots: GardenPlot[];
+  growSpeedLevel: number; // upgrade level
+  harvestLevel: number; // upgrade level
+}
+
 export interface GameState {
   currency: number;
   ores: Record<string, number>;
   refinedOres: Record<string, number>;
   ingots: Record<string, number>;
   items: Record<string, number>;
+  seeds: Record<string, number>; // plantId -> count
   miningUpgrades: Record<string, number>;
   foundryTier: number;
   smeltingJobs: SmeltingJob[];
@@ -32,6 +56,8 @@ export interface GameState {
   autoMinerEnabled: boolean;
   totalMined: number;
   lastDrop: { ore: Ore; quantity: number } | null;
+  lastSpecialDrop: string | null; // name of last special drop for UI feedback
+  greenhouses: Greenhouse[];
 }
 
 const initialState: GameState = {
@@ -40,6 +66,7 @@ const initialState: GameState = {
   refinedOres: {},
   ingots: {},
   items: {},
+  seeds: {},
   miningUpgrades: { drill_speed: 0, ore_scanner: 0, multi_drill: 0 },
   foundryTier: 1,
   smeltingJobs: [],
@@ -48,6 +75,8 @@ const initialState: GameState = {
   autoMinerEnabled: false,
   totalMined: 0,
   lastDrop: null,
+  lastSpecialDrop: null,
+  greenhouses: [],
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -74,7 +103,15 @@ type Action =
   | { type: 'TOGGLE_AUTO_MINER' }
   | { type: 'TOGGLE_AUTOMATION'; machineId: string; recipeId: string }
   | { type: 'TICK_AUTOMATION' }
-  | { type: 'LOAD_STATE'; state: GameState };
+  | { type: 'LOAD_STATE'; state: GameState }
+  // Garden actions
+  | { type: 'OPEN_SEED_PACK' }
+  | { type: 'PLANT_SEED'; greenhouseIndex: number; plotIndex: number; plantId: string }
+  | { type: 'HARVEST_PLANT'; greenhouseIndex: number; plotIndex: number }
+  | { type: 'ADD_PLOT'; greenhouseIndex: number }
+  | { type: 'UPGRADE_GROW_SPEED'; greenhouseIndex: number }
+  | { type: 'UPGRADE_HARVEST'; greenhouseIndex: number }
+  | { type: 'TICK_GARDEN' };
 
 function getMiningSpeed(state: GameState): number {
   const level = state.miningUpgrades.drill_speed || 0;
@@ -95,6 +132,14 @@ function getCurrentFoundry(state: GameState): FoundryUpgrade {
   return FOUNDRY_TIERS[state.foundryTier - 1] || FOUNDRY_TIERS[0];
 }
 
+export function getGrowSpeedMultiplier(level: number): number {
+  return 1 + level * 0.15; // 15% faster per level
+}
+
+export function getHarvestMultiplier(level: number): number {
+  return 1 + level * 0.2; // 20% more seeds/bonus per level
+}
+
 function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'MINE_TICK': {
@@ -108,11 +153,26 @@ function gameReducer(state: GameState, action: Action): GameState {
       const newOres = { ...state.ores };
       newOres[ore.id] = (newOres[ore.id] || 0) + quantity;
 
+      // Check for special drops
+      const specialDrops = rollSpecialDrops();
+      let newItems = state.items;
+      let lastSpecialDrop: string | null = null;
+
+      if (specialDrops.length > 0) {
+        newItems = { ...state.items };
+        for (const drop of specialDrops) {
+          newItems[drop.id] = (newItems[drop.id] || 0) + 1;
+          lastSpecialDrop = drop.name;
+        }
+      }
+
       return {
         ...state,
         ores: newOres,
+        items: newItems,
         totalMined: state.totalMined + quantity,
         lastDrop: { ore, quantity },
+        lastSpecialDrop,
       };
     }
 
@@ -142,7 +202,6 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'DEDUCT_FOR_LISTING': {
-      // Removes items from inventory when a marketplace listing is created (no currency gain)
       const { itemId, itemType, quantity } = action;
       const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
       const current = state[sourceKey][itemId] || 0;
@@ -154,7 +213,6 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'RETURN_FROM_LISTING': {
-      // Returns items to inventory when a listing is cancelled
       const { itemId, itemType, quantity } = action;
       const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
       const newSource = { ...state[sourceKey] };
@@ -163,7 +221,6 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'RECEIVE_PURCHASE': {
-      // Buyer receives items and pays currency
       const { itemId, itemType, quantity, totalCost } = action;
       if (state.currency < totalCost) return state;
       const sourceKey = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
@@ -197,7 +254,6 @@ function gameReducer(state: GameState, action: Action): GameState {
       const ore = ORE_MAP[oreId];
       if (!ore) return state;
 
-      // Check foundry tier meets ore's minimum smelt tier
       if (state.foundryTier < ore.minSmeltTier) return state;
 
       const source = refined ? state.refinedOres : state.ores;
@@ -313,11 +369,23 @@ function gameReducer(state: GameState, action: Action): GameState {
       newItems[recipe.id] = (newItems[recipe.id] || 0) + recipe.outputQuantity;
 
       // If machine, unlock it
-      const newMachines = recipe.category === 'machine'
+      let newMachines = recipe.category === 'machine'
         ? [...new Set([...newState.unlockedMachines, recipe.id])]
         : newState.unlockedMachines;
 
-      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines };
+      // If greenhouse, create a new greenhouse with 1 plot
+      let newGreenhouses = newState.greenhouses;
+      if (recipe.id === 'greenhouse') {
+        const gh: Greenhouse = {
+          id: `gh_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          plots: [{ plantId: null, plantedAt: null, lastIncomeTick: Date.now() }],
+          growSpeedLevel: 0,
+          harvestLevel: 0,
+        };
+        newGreenhouses = [...newGreenhouses, gh];
+      }
+
+      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines, greenhouses: newGreenhouses };
     }
 
     case 'TOGGLE_AUTO_MINER': {
@@ -330,7 +398,6 @@ function gameReducer(state: GameState, action: Action): GameState {
 
       const existing = state.automationJobs.find(j => j.machineId === machineId);
       if (existing) {
-        // If same recipe, toggle on/off. If different recipe, switch recipe.
         if (existing.recipeId === recipeId) {
           return {
             ...state,
@@ -348,7 +415,6 @@ function gameReducer(state: GameState, action: Action): GameState {
         }
       }
 
-      // New automation job
       const interval = getAutomationInterval(machineId);
       const newJob: AutomationJob = {
         machineId,
@@ -369,12 +435,10 @@ function gameReducer(state: GameState, action: Action): GameState {
         if (!job.enabled) continue;
         if (now - job.lastCraft < job.interval) continue;
 
-        // Try to auto-craft
         const recipe = RECIPE_MAP[job.recipeId];
         if (!recipe) continue;
         if (recipe.requiredMachine && !newState.unlockedMachines.includes(recipe.requiredMachine)) continue;
 
-        // Check ingredients
         let canCraft = true;
         for (const ing of recipe.ingredients) {
           const source = ing.type === 'ingot' ? newState.ingots : newState.items;
@@ -386,7 +450,6 @@ function gameReducer(state: GameState, action: Action): GameState {
 
         if (canCraft) {
           newState = gameReducer(newState, { type: 'CRAFT_ITEM', recipeId: job.recipeId });
-          // Update lastCraft timestamp
           newState = {
             ...newState,
             automationJobs: newState.automationJobs.map(j =>
@@ -414,6 +477,176 @@ function gameReducer(state: GameState, action: Action): GameState {
       return changed ? newState : state;
     }
 
+    // ─── Garden Actions ─────────────────────────────────────────────────────
+    case 'OPEN_SEED_PACK': {
+      const seedPacks = state.items['seed_pack'] || 0;
+      if (seedPacks < 1) return state;
+
+      const plant = rollSeedFromPack();
+      const newItems = { ...state.items };
+      newItems['seed_pack'] = seedPacks - 1;
+      if (newItems['seed_pack'] <= 0) delete newItems['seed_pack'];
+
+      const newSeeds = { ...state.seeds };
+      newSeeds[plant.id] = (newSeeds[plant.id] || 0) + 1;
+
+      return { ...state, items: newItems, seeds: newSeeds };
+    }
+
+    case 'PLANT_SEED': {
+      const { greenhouseIndex, plotIndex, plantId } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh) return state;
+      const plot = gh.plots[plotIndex];
+      if (!plot || plot.plantId) return state; // plot occupied
+      if ((state.seeds[plantId] || 0) < 1) return state;
+
+      const newSeeds = { ...state.seeds };
+      newSeeds[plantId] = (newSeeds[plantId] || 0) - 1;
+      if (newSeeds[plantId] <= 0) delete newSeeds[plantId];
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => {
+        if (gi !== greenhouseIndex) return g;
+        return {
+          ...g,
+          plots: g.plots.map((p, pi) => {
+            if (pi !== plotIndex) return p;
+            return { plantId, plantedAt: Date.now(), lastIncomeTick: Date.now() };
+          }),
+        };
+      });
+
+      return { ...state, seeds: newSeeds, greenhouses: newGreenhouses };
+    }
+
+    case 'HARVEST_PLANT': {
+      const { greenhouseIndex, plotIndex } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh) return state;
+      const plot = gh.plots[plotIndex];
+      if (!plot || !plot.plantId || !plot.plantedAt) return state;
+
+      const plant = PLANT_MAP[plot.plantId];
+      if (!plant) return state;
+
+      const growSpeed = getGrowSpeedMultiplier(gh.growSpeedLevel);
+      const adjustedGrowTime = plant.growTimeMs / growSpeed;
+      const elapsed = Date.now() - plot.plantedAt;
+      if (elapsed < adjustedGrowTime) return state; // not ready
+
+      const harvestMult = getHarvestMultiplier(gh.harvestLevel);
+      const bonus = Math.floor(plant.harvestBonus * harvestMult);
+      const seedReturn = Math.floor(plant.seedReturnBase * harvestMult);
+
+      const newSeeds = { ...state.seeds };
+      newSeeds[plot.plantId] = (newSeeds[plot.plantId] || 0) + seedReturn;
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => {
+        if (gi !== greenhouseIndex) return g;
+        return {
+          ...g,
+          plots: g.plots.map((p, pi) => {
+            if (pi !== plotIndex) return p;
+            return { plantId: null, plantedAt: null, lastIncomeTick: Date.now() };
+          }),
+        };
+      });
+
+      return { ...state, currency: state.currency + bonus, seeds: newSeeds, greenhouses: newGreenhouses };
+    }
+
+    case 'ADD_PLOT': {
+      const { greenhouseIndex } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh || gh.plots.length >= MAX_PLOTS_PER_GREENHOUSE) return state;
+
+      const cost = Math.floor(PLOT_COST_BASE * Math.pow(PLOT_COST_MULTIPLIER, gh.plots.length - 1));
+      if (state.currency < cost) return state;
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => {
+        if (gi !== greenhouseIndex) return g;
+        return {
+          ...g,
+          plots: [...g.plots, { plantId: null, plantedAt: null, lastIncomeTick: Date.now() }],
+        };
+      });
+
+      return { ...state, currency: state.currency - cost, greenhouses: newGreenhouses };
+    }
+
+    case 'UPGRADE_GROW_SPEED': {
+      const { greenhouseIndex } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh || gh.growSpeedLevel >= GROW_SPEED_MAX_LEVEL) return state;
+
+      const cost = Math.floor(GROW_SPEED_UPGRADE_BASE * Math.pow(GROW_SPEED_UPGRADE_MULTIPLIER, gh.growSpeedLevel));
+      if (state.currency < cost) return state;
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => {
+        if (gi !== greenhouseIndex) return g;
+        return { ...g, growSpeedLevel: g.growSpeedLevel + 1 };
+      });
+
+      return { ...state, currency: state.currency - cost, greenhouses: newGreenhouses };
+    }
+
+    case 'UPGRADE_HARVEST': {
+      const { greenhouseIndex } = action;
+      const gh = state.greenhouses[greenhouseIndex];
+      if (!gh || gh.harvestLevel >= HARVEST_MAX_LEVEL) return state;
+
+      const cost = Math.floor(HARVEST_UPGRADE_BASE * Math.pow(HARVEST_UPGRADE_MULTIPLIER, gh.harvestLevel));
+      if (state.currency < cost) return state;
+
+      const newGreenhouses = state.greenhouses.map((g, gi) => {
+        if (gi !== greenhouseIndex) return g;
+        return { ...g, harvestLevel: g.harvestLevel + 1 };
+      });
+
+      return { ...state, currency: state.currency - cost, greenhouses: newGreenhouses };
+    }
+
+    case 'TICK_GARDEN': {
+      if (state.greenhouses.length === 0) return state;
+
+      const now = Date.now();
+      let totalIncome = 0;
+      let changed = false;
+
+      const newGreenhouses = state.greenhouses.map(gh => {
+        const growSpeed = getGrowSpeedMultiplier(gh.growSpeedLevel);
+        return {
+          ...gh,
+          plots: gh.plots.map(plot => {
+            if (!plot.plantId || !plot.plantedAt) return plot;
+
+            const plant = PLANT_MAP[plot.plantId];
+            if (!plant) return plot;
+
+            const adjustedGrowTime = plant.growTimeMs / growSpeed;
+            const elapsed = now - plot.plantedAt;
+
+            // Fully grown plants stop generating income
+            if (elapsed >= adjustedGrowTime) return plot;
+
+            // Calculate ticks since last income
+            const ticksSinceLastIncome = Math.floor((now - plot.lastIncomeTick) / GARDEN_TICK_INTERVAL);
+            if (ticksSinceLastIncome > 0) {
+              totalIncome += plant.passiveIncomePerTick * ticksSinceLastIncome;
+              changed = true;
+              return { ...plot, lastIncomeTick: now };
+            }
+
+            return plot;
+          }),
+        };
+      });
+
+      if (!changed) return state;
+
+      return { ...state, currency: state.currency + totalIncome, greenhouses: newGreenhouses };
+    }
+
     case 'LOAD_STATE':
       return action.state;
 
@@ -423,18 +656,17 @@ function gameReducer(state: GameState, action: Action): GameState {
 }
 
 // ─── Automation interval by machine tier ─────────────────────────────────────
-// Lower tier machines run slower (simpler recipes); advanced machines run faster
 const MACHINE_INTERVALS: Record<string, number> = {
-  wafer_cutter: 12000,       // Tier 1 recipes — fast output, simple parts
-  etching_station: 10000,    // Tier 2 recipes — slightly more complex assemblies
-  cnc_mill: 9000,            // Tier 3 precision components
-  laser_cutter: 8000,        // Basic electronics
-  plasma_welder: 7000,       // Tier 4 industrial components
-  chemical_reactor: 7000,    // Intermediate + advanced electronics
-  lithography_machine: 6000, // Processors / microcontrollers — high value
-  centrifuge: 5000,          // Tier 5 high-tech components
-  advanced_fab: 4000,        // Tier 6 quantum components + GPU cores
-  quantum_lab: 3000,         // Tier 7 void components + quantum gates — endgame
+  wafer_cutter: 12000,
+  etching_station: 10000,
+  cnc_mill: 9000,
+  laser_cutter: 8000,
+  plasma_welder: 7000,
+  chemical_reactor: 7000,
+  lithography_machine: 6000,
+  centrifuge: 5000,
+  advanced_fab: 4000,
+  quantum_lab: 3000,
 };
 
 function getAutomationInterval(machineId: string): number {
@@ -447,7 +679,6 @@ const ORE_ID_REMAP: Record<string, string> = {
   neodymium: 'monazite',
 };
 
-// Old foundry tier -> new foundry tier mapping
 const FOUNDRY_TIER_REMAP: Record<number, number> = {
   1: 1,
   2: 2,
@@ -458,7 +689,6 @@ function migrateOreRecord(record: Record<string, number>): Record<string, number
   const result: Record<string, number> = {};
   for (const [key, val] of Object.entries(record)) {
     const newKey = ORE_ID_REMAP[key] || key;
-    // Only keep entries for ores that exist in the new system
     if (ORE_MAP[newKey]) {
       result[newKey] = (result[newKey] || 0) + val;
     }
@@ -469,19 +699,19 @@ function migrateOreRecord(record: Record<string, number>): Record<string, number
 function migrateState(saved: any): GameState {
   const state = { ...initialState, ...saved, smeltingJobs: [] };
 
-  // Migrate ore records
   if (state.ores) state.ores = migrateOreRecord(state.ores);
   if (state.refinedOres) state.refinedOres = migrateOreRecord(state.refinedOres);
   if (state.ingots) state.ingots = migrateOreRecord(state.ingots);
 
-  // Migrate foundry tier if it was from old 3-tier system
   if (state.foundryTier && FOUNDRY_TIER_REMAP[state.foundryTier] !== undefined && state.foundryTier <= 3) {
     state.foundryTier = FOUNDRY_TIER_REMAP[state.foundryTier];
   }
 
-  // Ensure new fields exist
   if (!state.automationJobs) state.automationJobs = [];
   if (state.autoMinerEnabled === undefined) state.autoMinerEnabled = false;
+  if (!state.seeds) state.seeds = {};
+  if (!state.greenhouses) state.greenhouses = [];
+  if (!state.lastSpecialDrop) state.lastSpecialDrop = null;
 
   return state;
 }
@@ -545,7 +775,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setSaveStatus('saving');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaveStatus('idle'); return; }
-      const { lastDrop, smeltingJobs, ...saveable } = gameState;
+      const { lastDrop, smeltingJobs, lastSpecialDrop, ...saveable } = gameState;
       const { error } = await supabase.from('profiles').update({
         game_state: saveable as any,
         total_mined: gameState.totalMined,
@@ -560,7 +790,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const { lastDrop, smeltingJobs, ...toSave } = state;
+    const { lastDrop, smeltingJobs, lastSpecialDrop, ...toSave } = state;
     localStorage.setItem('voidmarket_state', JSON.stringify(toSave));
 
     const serialized = JSON.stringify(toSave);
@@ -592,6 +822,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => dispatch({ type: 'MINE_TICK' }), intervalMs);
     return () => clearInterval(interval);
   }, [state.autoMinerEnabled, state.miningUpgrades.auto_miner_speed]);
+
+  // Garden tick
+  useEffect(() => {
+    if (state.greenhouses.length === 0) return;
+    const interval = setInterval(() => dispatch({ type: 'TICK_GARDEN' }), GARDEN_TICK_INTERVAL);
+    return () => clearInterval(interval);
+  }, [state.greenhouses.length]);
 
   const miningSpeed = getMiningSpeed(state);
   const foundry = getCurrentFoundry(state);
