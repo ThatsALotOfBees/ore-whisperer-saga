@@ -156,6 +156,7 @@ export function Marketplace() {
     const { data, error } = await (supabase.rpc as any)('purchase_marketplace_listing', {
       listing_id: listing.id,
       buyer_id: user.id,
+      buy_quantity: buyQty,
     }) as { data: any; error: any };
 
     if (error || !data?.success) {
