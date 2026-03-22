@@ -11,11 +11,12 @@ import { ChatRoom } from '@/components/game/ChatRoom';
 import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
 import { GardenPanel } from '@/components/game/GardenPanel';
+import { TransmutationPanel } from '@/components/game/TransmutationPanel';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'market' | 'upgrades' | 'chat';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -40,7 +41,7 @@ function GameContent() {
   );
 }
 
-const CURRENT_VERSION = 'v0.64';
+const CURRENT_VERSION = 'v0.65';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
@@ -51,18 +52,17 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
     >
       <div className="max-w-md w-full bg-card border border-accent p-6 space-y-4 shadow-2xl">
         <div className="space-y-1">
-          <h2 className="font-mono-game text-sm text-accent tracking-widest uppercase">Major Update: Garden Expansion</h2>
+          <h2 className="font-mono-game text-sm text-accent tracking-widest uppercase">Major Update: Blood Arsenal</h2>
           <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
         </div>
         
         <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
-          <p>The Void Market has expanded! A massive botanical discovery has brought <span className="text-accent">120+ new plant species</span> to your greenhouses.</p>
+          <p>The ore remembers. Give it blood, and it will remember more. The <span className="text-pink-400">🩸 Blood Arsenal Update</span> introduces ore transmutation and corruption mechanics.</p>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li>New Rarities: <span className="text-pink-400">Mythic</span> & <span className="text-cyan-400">Crystalized</span></li>
-            <li>20 New Plants per Rarity Tier</li>
-            <li>Reworked Harvest: Now includes Duplicate Chance!</li>
-            <li>Consolidated "Harvest & Replant" Action</li>
-            <li>Marketplace Stability Improvements</li>
+            <li>New Machine: <span className="text-pink-300">Sanguinite Transmutation Table</span></li>
+            <li>Ore Mutations: 10 new modifiers across Positive, Corrupted, and Sanguine types</li>
+            <li>Risk vs Reward: Boost outcomes with Veinite, influence rarity with Biomass</li>
+            <li>Sell and trade potent end-game ingots with high value multipliers</li>
           </ul>
         </div>
 
@@ -83,6 +83,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
 
   const hasMachines = state.unlockedMachines.length > 0;
   const hasGarden = state.greenhouses.length > 0;
+  const hasTransmuter = state.unlockedMachines.includes('sanguinite_transmutation_table');
 
   const showUpdate = state.lastViewedVersion !== CURRENT_VERSION;
 
@@ -97,6 +98,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'craft', label: 'Craft' },
     { key: 'machines', label: 'Machines', hidden: !hasMachines },
     { key: 'garden', label: 'Garden', hidden: !hasGarden },
+    { key: 'transmute', label: '🩸 Transmute', hidden: !hasTransmuter },
     { key: 'market', label: 'Market' },
     { key: 'upgrades', label: 'Upgrades' },
     { key: 'chat', label: 'Chat' },
@@ -157,6 +159,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
             {tab === 'craft' && <CraftingStation />}
             {tab === 'machines' && <MachinesPanel />}
             {tab === 'garden' && <GardenPanel />}
+            {tab === 'transmute' && <TransmutationPanel />}
             {tab === 'market' && <Marketplace />}
             {tab === 'upgrades' && <UpgradeShop />}
             {tab === 'chat' && <ChatRoom />}

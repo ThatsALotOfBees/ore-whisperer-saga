@@ -11,6 +11,11 @@ import {
   GARDEN_TICK_INTERVAL,
   type PlantDef, type PlantRarity,
 } from '@/data/garden';
+import {
+  type MutationModifier, type MutationTier, type TransmutationFailure,
+  rollMutations, rollFailureOutcome, getFailureChance, getTierFromBoost,
+  getTransmutationDuration,
+} from '@/data/mutations';
 
 export interface SmeltingJob {
   oreId: string;
@@ -25,6 +30,32 @@ export interface AutomationJob {
   enabled: boolean;
   interval: number;
   lastCraft: number;
+}
+
+// ─── Transmutation Types ─────────────────────────────────────────────────────
+export interface MutatedOre {
+  id: string;
+  oreId: string;
+  mutations: MutationModifier[];
+  quantity: number;
+  createdAt: number;
+  failureOutcome?: TransmutationFailure;
+}
+
+export interface TransmutationJob {
+  id: string;
+  tableId: string;
+  oreId: string;
+  veiniteBoost: number;
+  biomassBoost: boolean;
+  startTime: number;
+  duration: number;
+  tier: MutationTier;
+}
+
+export interface TransmutationTable {
+  id: string;
+  activeJob: TransmutationJob | null;
 }
 
 // ─── Garden Types ────────────────────────────────────────────────────────────
@@ -50,6 +81,8 @@ export interface GameState {
   seeds: Record<string, number>; // plantId -> count
   miningUpgrades: Record<string, number>;
   foundryTier: number;
+  transmutationTables: TransmutationTable[];
+  mutatedOres: MutatedOre[];
   smeltingJobs: SmeltingJob[];
   smeltingQueue: SmeltingJob[];
   unlockedMachines: string[];
@@ -81,6 +114,8 @@ const initialState: GameState = {
   lastDrop: null,
   lastSpecialDrop: null,
   greenhouses: [],
+  transmutationTables: [],
+  mutatedOres: [],
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -119,7 +154,13 @@ type Action =
   | { type: 'REPLANT_ALL'; greenhouseIndex: number }
   | { type: 'SMELT_EVERYTHING' }
   | { type: 'TICK_GARDEN' }
-  | { type: 'ACKNOWLEDGE_UPDATE', version: string };
+  | { type: 'ACKNOWLEDGE_UPDATE', version: string }
+  // Transmutation actions
+  | { type: 'START_TRANSMUTATION'; tableId: string; oreId: string; veiniteBoost: number; biomassBoost: boolean }
+  | { type: 'COMPLETE_TRANSMUTATION'; tableId: string; result: MutatedOre }
+  | { type: 'TICK_TRANSMUTATION' }
+  | { type: 'SELL_MUTATED_ORE'; mutatedOreId: string }
+  | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string };
 
 function getMiningSpeed(state: GameState): number {
   const level = state.miningUpgrades.drill_speed || 0;
@@ -428,6 +469,16 @@ function gameReducer(state: GameState, action: Action): GameState {
         ? [...new Set([...newState.unlockedMachines, recipe.id])]
         : newState.unlockedMachines;
 
+      // If transmutation table, create a new table entry
+      let newTransmutationTables = newState.transmutationTables;
+      if (recipe.id === 'sanguinite_transmutation_table') {
+        const table: TransmutationTable = {
+          id: `tt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          activeJob: null,
+        };
+        newTransmutationTables = [...newTransmutationTables, table];
+      }
+
       // If greenhouse, create a new greenhouse with 1 plot
       let newGreenhouses = newState.greenhouses;
       if (recipe.id === 'greenhouse') {
@@ -440,7 +491,7 @@ function gameReducer(state: GameState, action: Action): GameState {
         newGreenhouses = [...newGreenhouses, gh];
       }
 
-      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines, greenhouses: newGreenhouses };
+      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines, greenhouses: newGreenhouses, transmutationTables: newTransmutationTables };
     }
 
     case 'TOGGLE_AUTO_MINER': {
@@ -784,6 +835,157 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...state, lastViewedVersion: action.version };
     }
 
+    // ─── Transmutation Actions ───────────────────────────────────────────────
+    case 'START_TRANSMUTATION': {
+      const { tableId, oreId, veiniteBoost, biomassBoost } = action;
+      const table = state.transmutationTables.find(t => t.id === tableId);
+      if (!table || table.activeJob) return state; // table busy
+
+      const ore = ORE_MAP[oreId];
+      if (!ore) return state;
+
+      // Deduct 1 ingot of the chosen ore
+      const currentIngot = state.ingots[oreId] || 0;
+      if (currentIngot < 1) return state;
+
+      // Deduct veinite boost ingots
+      const currentVeinite = state.ingots['veinite'] || 0;
+      if (currentVeinite < veiniteBoost) return state;
+
+      const tier = getTierFromBoost(veiniteBoost);
+      const duration = getTransmutationDuration(ore.tier, tier);
+
+      const newIngots = { ...state.ingots };
+      newIngots[oreId] = currentIngot - 1;
+      if (newIngots[oreId] <= 0) delete newIngots[oreId];
+      if (veiniteBoost > 0) {
+        newIngots['veinite'] = (newIngots['veinite'] || 0) - veiniteBoost;
+        if (newIngots['veinite'] <= 0) delete newIngots['veinite'];
+      }
+
+      const job: TransmutationJob = {
+        id: `tj_${Date.now()}`,
+        tableId,
+        oreId,
+        veiniteBoost,
+        biomassBoost,
+        startTime: Date.now(),
+        duration,
+        tier,
+      };
+
+      const newTables = state.transmutationTables.map(t =>
+        t.id === tableId ? { ...t, activeJob: job } : t
+      );
+
+      return { ...state, ingots: newIngots, transmutationTables: newTables };
+    }
+
+    case 'COMPLETE_TRANSMUTATION': {
+      const { tableId, result } = action;
+      const newTables = state.transmutationTables.map(t =>
+        t.id === tableId ? { ...t, activeJob: null } : t
+      );
+      return {
+        ...state,
+        transmutationTables: newTables,
+        mutatedOres: [...state.mutatedOres, result],
+      };
+    }
+
+    case 'TICK_TRANSMUTATION': {
+      const now = Date.now();
+      let newState = state;
+      let changed = false;
+
+      for (const table of state.transmutationTables) {
+        const job = table.activeJob;
+        if (!job) continue;
+        if (now - job.startTime < job.duration) continue;
+
+        // Job complete — roll result
+        const failChance = getFailureChance(job.tier);
+        const failed = Math.random() < failChance;
+
+        let result: MutatedOre;
+        if (failed) {
+          const outcome = rollFailureOutcome();
+          result = {
+            id: `mo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            oreId: job.oreId,
+            mutations: [],
+            quantity: outcome === 'overgrowth' ? 3 : 1,
+            createdAt: now,
+            failureOutcome: outcome,
+          };
+        } else {
+          const mutations = rollMutations(job.veiniteBoost, job.biomassBoost, job.tier);
+          result = {
+            id: `mo_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            oreId: job.oreId,
+            mutations,
+            quantity: 1,
+            createdAt: now,
+          };
+        }
+
+        newState = gameReducer(newState, { type: 'COMPLETE_TRANSMUTATION', tableId: table.id, result });
+        changed = true;
+      }
+
+      return changed ? newState : state;
+    }
+
+    case 'SELL_MUTATED_ORE': {
+      const { mutatedOreId } = action;
+      const mutated = state.mutatedOres.find(m => m.id === mutatedOreId);
+      if (!mutated) return state;
+
+      const ore = ORE_MAP[mutated.oreId];
+      const baseValue = ore ? ore.value * 2.5 : 50; // ingot base value
+
+      // Apply mutation multipliers
+      let finalValue = baseValue;
+      let bonusQty = 0;
+      for (const mod of mutated.mutations) {
+        if (mod.sellValueMultiplier) finalValue *= mod.sellValueMultiplier;
+        if (mod.valueVariance) {
+          const variance = (Math.random() * 2 - 1) * mod.valueVariance;
+          finalValue *= (1 + variance);
+        }
+        if (mod.extraDropChance && Math.random() < mod.extraDropChance) bonusQty++;
+      }
+
+      // Bloodbound: scale with total mined
+      for (const mod of mutated.mutations) {
+        if (mod.id === 'bloodbound') {
+          const thousands = Math.floor(state.totalMined / 1000);
+          finalValue *= (1 + thousands * (mod.sellValueMultiplier! - 1));
+        }
+      }
+
+      // Failure outcomes
+      if (mutated.failureOutcome === 'degraded') finalValue *= 0.3;
+      if (mutated.failureOutcome === 'corrupt_mass') finalValue = 0;
+      if (mutated.failureOutcome === 'overgrowth') finalValue *= 0.5;
+
+      const totalQty = mutated.quantity + bonusQty;
+      const earned = Math.max(0, Math.floor(finalValue * totalQty));
+
+      return {
+        ...state,
+        currency: state.currency + earned,
+        mutatedOres: state.mutatedOres.filter(m => m.id !== mutatedOreId),
+      };
+    }
+
+    case 'DISCARD_MUTATED_ORE': {
+      return {
+        ...state,
+        mutatedOres: state.mutatedOres.filter(m => m.id !== action.mutatedOreId),
+      };
+    }
+
     default:
       return state;
   }
@@ -847,6 +1049,8 @@ function migrateState(saved: any): GameState {
   if (!state.greenhouses) state.greenhouses = [];
   if (!state.lastSpecialDrop) state.lastSpecialDrop = null;
   if (!state.smeltingQueue) state.smeltingQueue = [];
+  if (!state.transmutationTables) state.transmutationTables = [];
+  if (!state.mutatedOres) state.mutatedOres = [];
 
   return state;
 }
@@ -964,6 +1168,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => dispatch({ type: 'TICK_GARDEN' }), GARDEN_TICK_INTERVAL);
     return () => clearInterval(interval);
   }, [state.greenhouses.length]);
+
+  // Transmutation tick
+  useEffect(() => {
+    if (state.transmutationTables.length === 0) return;
+    const interval = setInterval(() => dispatch({ type: 'TICK_TRANSMUTATION' }), 1000);
+    return () => clearInterval(interval);
+  }, [state.transmutationTables.length]);
 
   const miningSpeed = getMiningSpeed(state);
   const foundry = getCurrentFoundry(state);
