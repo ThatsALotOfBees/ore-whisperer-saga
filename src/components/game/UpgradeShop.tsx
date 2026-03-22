@@ -4,16 +4,21 @@ import { MINING_UPGRADES } from '@/data/recipes';
 export function UpgradeShop() {
   const { state, dispatch } = useGame();
 
+  const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
+
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Upgrades</h2>
+        <div className="space-y-1">
+          <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Upgrades</h2>
+          <p className="font-mono-game text-[10px] text-primary">Target: {activePoint.name}</p>
+        </div>
         <span className="font-mono-game text-sm text-accent">{state.currency.toLocaleString()} ¤</span>
       </div>
 
       <div className="space-y-3">
         {MINING_UPGRADES.map(upgrade => {
-          const level = state.miningUpgrades[upgrade.id] || 0;
+          const level = activePoint.upgrades[upgrade.id] || 0;
           const maxed = level >= upgrade.maxLevel;
           const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, level));
           const canAfford = state.currency >= cost;

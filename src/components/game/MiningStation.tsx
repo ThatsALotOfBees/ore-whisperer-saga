@@ -11,8 +11,9 @@ export function MiningStation() {
   const [drops, setDrops] = useState<{ id: number; name: string; rarity: OreRarity; qty: number }[]>([]);
   const dropIdRef = useRef(0);
 
-  const isAutoMining = state.autoMinerEnabled;
-  const autoMinerLevel = state.miningUpgrades.auto_miner_speed || 0;
+  const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
+  const isAutoMining = activePoint.autoMinerEnabled;
+  const autoMinerLevel = activePoint.upgrades.auto_miner_speed || 0;
   const autoMinerInterval = Math.max(2000, 10000 * Math.pow(0.85, autoMinerLevel));
 
   const tickInterval = Math.max(30, Math.floor(50 / miningSpeed));
@@ -84,9 +85,21 @@ export function MiningStation() {
 
   return (
     <div className="flex flex-col items-center gap-6 p-8">
-      <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">
-        Extraction Point 01
-      </h2>
+      {state.miningPoints.length > 1 ? (
+        <select
+          value={state.activeMiningPointId}
+          onChange={(e) => dispatch({ type: 'SWITCH_MINING_POINT', pointId: e.target.value })}
+          className="bg-card text-foreground border border-border font-mono-game text-xs tracking-[0.2em] uppercase p-2 rounded-sm focus:outline-none focus:border-primary outline-none cursor-pointer"
+        >
+          {state.miningPoints.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      ) : (
+        <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">
+          {activePoint.name}
+        </h2>
+      )}
 
       {/* Auto-miner toggle */}
       <div className="flex items-center gap-3">

@@ -12,11 +12,13 @@ import { MachinesPanel } from '@/components/game/MachinesPanel';
 import { Marketplace } from '@/components/game/Marketplace';
 import { GardenPanel } from '@/components/game/GardenPanel';
 import { TransmutationPanel } from '@/components/game/TransmutationPanel';
+import { AchievementsPanel } from '@/components/game/AchievementsPanel';
+import { RebirthPanel } from '@/components/game/RebirthPanel';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -84,6 +86,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   const hasMachines = state.unlockedMachines.length > 0;
   const hasGarden = state.greenhouses.length > 0;
   const hasTransmuter = state.unlockedMachines.includes('sanguinite_transmutation_table');
+  const hasRebirth = state.rebirthCount > 0 || state.unlockedMachines.includes('quantum_lab');
 
   const showUpdate = state.lastViewedVersion !== CURRENT_VERSION;
 
@@ -101,6 +104,8 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'transmute', label: '🩸 Transmute', hidden: !hasTransmuter },
     { key: 'market', label: 'Market' },
     { key: 'upgrades', label: 'Upgrades' },
+    { key: 'achievements', label: 'Trophies' },
+    { key: 'rebirth', label: '🌌 Rebirth', hidden: !hasRebirth },
     { key: 'chat', label: 'Chat' },
   ];
 
@@ -162,6 +167,8 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
             {tab === 'transmute' && <TransmutationPanel />}
             {tab === 'market' && <Marketplace />}
             {tab === 'upgrades' && <UpgradeShop />}
+            {tab === 'achievements' && <AchievementsPanel />}
+            {tab === 'rebirth' && <RebirthPanel />}
             {tab === 'chat' && <ChatRoom />}
           </motion.div>
         </AnimatePresence>
