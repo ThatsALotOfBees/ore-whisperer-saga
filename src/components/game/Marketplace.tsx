@@ -36,6 +36,7 @@ export function Marketplace() {
   const [sellItemType, setSellItemType] = useState<'ore' | 'refined' | 'ingot' | 'item'>('ore');
   const [sellQty, setSellQty] = useState(1);
   const [sellPrice, setSellPrice] = useState(10);
+  const [buyQuantities, setBuyQuantities] = useState<Record<string, number>>({});
 
   const showStatus = (text: string, ok: boolean) => {
     setStatusMsg({ text, ok });
@@ -156,6 +157,7 @@ export function Marketplace() {
     const { data, error } = await (supabase.rpc as any)('purchase_marketplace_listing', {
       listing_id: listing.id,
       buyer_id: user.id,
+      buy_quantity: buyQty,
     }) as { data: any; error: any };
 
     if (error || !data?.success) {
@@ -276,8 +278,9 @@ export function Marketplace() {
             )}
             <AnimatePresence>
               {filteredListings.map(listing => {
-                const totalCost = listing.price_per_unit * listing.quantity;
-                const canBuy = state.currency >= totalCost && listing.seller_id !== user?.id && !loading;
+                const bq = buyQuantities[listing.id] || 1;
+                const totalCost = listing.price_per_unit * bq;
+                const canBuy = state.currency >= totalCost && listing.seller_id !== user?.id && !loading && bq >= 1 && bq <= listing.quantity;
                 const isMine = listing.seller_id === user?.id;
 
                 return (
@@ -305,41 +308,58 @@ export function Marketplace() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="font-mono-game text-[10px] text-muted-foreground">
-                          Qty: {listing.quantity}
+                          Available: {listing.quantity}
                         </span>
                         <span className="font-mono-game text-[10px] text-primary">
-                          Total: {totalCost.toLocaleString()} ¤
+                          Cost: {totalCost.toLocaleString()} ¤
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono-game text-[9px] text-muted-foreground/50">
-                          by {listing.seller_username}
-                        </span>
-                        {!isMine && (
-                          <div className="flex gap-1.5">
-                            {listing.quantity > 1 && (
-                              <button
-                                onClick={() => handleBuy(listing, 1)}
-                                disabled={loading || state.currency < listing.price_per_unit}
-                                className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-primary/50 text-primary hover:bg-primary/10 disabled:opacity-30 transition-colors"
-                              >
-                                Buy 1
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleBuy(listing, listing.quantity)}
-                              disabled={!canBuy}
-                              className="font-mono-game text-[9px] uppercase px-2 py-0.5 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors"
-                            >
-                              {listing.quantity > 1 ? `Buy All (${listing.quantity})` : 'Buy'}
-                            </button>
-                          </div>
-                        )}
-                        {isMine && (
-                          <span className="font-mono-game text-[9px] text-primary uppercase">Your Listing</span>
-                        )}
-                      </div>
+                      <span className="font-mono-game text-[9px] text-muted-foreground/50">
+                        by {listing.seller_username}
+                      </span>
                     </div>
+
+                    {!isMine && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => setBuyQuantities(p => ({ ...p, [listing.id]: Math.max(1, bq - 1) }))}
+                          disabled={bq <= 1}
+                          className="font-mono-game text-[10px] w-5 h-5 border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >−</button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={listing.quantity}
+                          value={bq}
+                          onChange={e => {
+                            const v = Math.max(1, Math.min(listing.quantity, parseInt(e.target.value) || 1));
+                            setBuyQuantities(p => ({ ...p, [listing.id]: v }));
+                          }}
+                          className="w-12 bg-background border border-border text-center font-mono-game text-[10px] text-foreground py-0.5 focus:outline-none focus:border-accent"
+                        />
+                        <button
+                          onClick={() => setBuyQuantities(p => ({ ...p, [listing.id]: Math.min(listing.quantity, bq + 1) }))}
+                          disabled={bq >= listing.quantity}
+                          className="font-mono-game text-[10px] w-5 h-5 border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >+</button>
+                        {listing.quantity > 1 && (
+                          <button
+                            onClick={() => setBuyQuantities(p => ({ ...p, [listing.id]: listing.quantity }))}
+                            className="font-mono-game text-[9px] uppercase px-1.5 py-0.5 border border-border text-muted-foreground hover:text-foreground"
+                          >All</button>
+                        )}
+                        <button
+                          onClick={() => handleBuy(listing, bq)}
+                          disabled={!canBuy}
+                          className="font-mono-game text-[9px] uppercase px-3 py-0.5 border border-accent text-accent hover:bg-accent/10 disabled:opacity-30 transition-colors ml-auto"
+                        >
+                          Buy {bq > 1 ? `(${bq})` : ''}
+                        </button>
+                      </div>
+                    )}
+                    {isMine && (
+                      <span className="font-mono-game text-[9px] text-primary uppercase">Your Listing</span>
+                    )}
                   </motion.div>
                 );
               })}
