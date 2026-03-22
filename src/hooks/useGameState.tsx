@@ -53,6 +53,7 @@ export interface GameState {
   smeltingJobs: SmeltingJob[];
   smeltingQueue: SmeltingJob[];
   unlockedMachines: string[];
+  lastViewedVersion?: string;
   automationJobs: AutomationJob[];
   autoMinerEnabled: boolean;
   totalMined: number;
@@ -73,6 +74,7 @@ const initialState: GameState = {
   smeltingJobs: [],
   smeltingQueue: [],
   unlockedMachines: [],
+  lastViewedVersion: 'v0.54', // Start from currently known version
   automationJobs: [],
   autoMinerEnabled: false,
   totalMined: 0,
@@ -116,7 +118,8 @@ type Action =
   | { type: 'UPGRADE_HARVEST'; greenhouseIndex: number }
   | { type: 'REPLANT_ALL'; greenhouseIndex: number }
   | { type: 'SMELT_EVERYTHING' }
-  | { type: 'TICK_GARDEN' };
+  | { type: 'TICK_GARDEN' }
+  | { type: 'ACKNOWLEDGE_UPDATE', version: string };
 
 function getMiningSpeed(state: GameState): number {
   const level = state.miningUpgrades.drill_speed || 0;
@@ -595,7 +598,7 @@ function gameReducer(state: GameState, action: Action): GameState {
       // 2. Refresh gh reference from the updated state
       gh = currentState.greenhouses[greenhouseIndex];
       let currentSeeds = { ...currentState.seeds };
-      const rarityPriority: PlantRarity[] = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+      const rarityPriority: PlantRarity[] = ['crystalized', 'mythic', 'legendary', 'epic', 'rare', 'uncommon', 'common'];
 
       const newPlots = gh.plots.map(p => {
         if (p.plantId) return p;
@@ -776,6 +779,10 @@ function gameReducer(state: GameState, action: Action): GameState {
 
     case 'LOAD_STATE':
       return action.state;
+
+    case 'ACKNOWLEDGE_UPDATE': {
+      return { ...state, lastViewedVersion: action.version };
+    }
 
     default:
       return state;
