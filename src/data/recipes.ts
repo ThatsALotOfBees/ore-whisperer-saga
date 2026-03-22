@@ -430,6 +430,11 @@ const machines: CraftingRecipe[] = [
     { itemId: 'plant_in_a_boot', type: 'item', quantity: 1 },
     { itemId: 'rhodium', type: 'ingot', quantity: 1 },
   ], outputQuantity: 1, description: 'A structure for growing plants. Unlocks the Garden tab.' },
+
+  { id: 'sanguinite_transmutation_table', name: 'Sanguinite Transmutation Table', category: 'machine', ingredients: [
+    { itemId: 'veinite', type: 'ingot', quantity: 10 },
+    { itemId: 'veinite_core', type: 'item', quantity: 1 },
+  ], outputQuantity: 1, description: '🩸 Mutate ore ingots into enhanced or corrupted variants. Unlocks the Transmute tab.' },
 ];
 
 // ─── Ballistic Components (10) ───────────────────────────────────────────────
