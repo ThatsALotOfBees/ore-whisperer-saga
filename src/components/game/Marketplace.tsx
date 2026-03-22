@@ -36,6 +36,7 @@ export function Marketplace() {
   const [sellItemType, setSellItemType] = useState<'ore' | 'refined' | 'ingot' | 'item'>('ore');
   const [sellQty, setSellQty] = useState(1);
   const [sellPrice, setSellPrice] = useState(10);
+  const [buyQuantities, setBuyQuantities] = useState<Record<string, number>>({});
 
   const showStatus = (text: string, ok: boolean) => {
     setStatusMsg({ text, ok });
