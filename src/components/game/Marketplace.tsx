@@ -360,8 +360,6 @@ export function Marketplace() {
                     {isMine && (
                       <span className="font-mono-game text-[9px] text-primary uppercase">Your Listing</span>
                     )}
-                      </div>
-                    </div>
                   </motion.div>
                 );
               })}
