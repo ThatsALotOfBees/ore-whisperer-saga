@@ -16,6 +16,7 @@ import {
   rollMutations, rollFailureOutcome, getFailureChance, getTierFromBoost,
   getTransmutationDuration,
 } from '@/data/mutations';
+import { ACHIEVEMENTS } from '@/data/achievements';
 
 export interface SmeltingJob {
   oreId: string;
@@ -30,6 +31,15 @@ export interface AutomationJob {
   enabled: boolean;
   interval: number;
   lastCraft: number;
+}
+
+// ─── Mining Point Types ──────────────────────────────────────────────────────
+export interface MiningPoint {
+  id: string;
+  name: string;
+  upgrades: Record<string, number>;
+  autoMinerEnabled: boolean;
+  lastAutoMine: number;
 }
 
 // ─── Transmutation Types ─────────────────────────────────────────────────────
@@ -79,7 +89,10 @@ export interface GameState {
   ingots: Record<string, number>;
   items: Record<string, number>;
   seeds: Record<string, number>; // plantId -> count
-  miningUpgrades: Record<string, number>;
+  miningPoints: MiningPoint[];
+  activeMiningPointId: string;
+  rebirthCount: number;
+  unlockedAchievements: string[];
   foundryTier: number;
   transmutationTables: TransmutationTable[];
   mutatedOres: MutatedOre[];
@@ -88,7 +101,6 @@ export interface GameState {
   unlockedMachines: string[];
   lastViewedVersion?: string;
   automationJobs: AutomationJob[];
-  autoMinerEnabled: boolean;
   totalMined: number;
   lastDrop: { ore: Ore; quantity: number } | null;
   lastSpecialDrop: string | null; // name of last special drop for UI feedback
@@ -102,14 +114,22 @@ const initialState: GameState = {
   ingots: {},
   items: {},
   seeds: {},
-  miningUpgrades: { drill_speed: 0, ore_scanner: 0, multi_drill: 0 },
+  miningPoints: [{
+    id: 'mp_0',
+    name: 'Extraction Point 01',
+    upgrades: { drill_speed: 0, ore_scanner: 0, multi_drill: 0, auto_miner_speed: 0 },
+    autoMinerEnabled: false,
+    lastAutoMine: 0,
+  }],
+  activeMiningPointId: 'mp_0',
+  rebirthCount: 0,
+  unlockedAchievements: [],
   foundryTier: 1,
   smeltingJobs: [],
   smeltingQueue: [],
   unlockedMachines: [],
   lastViewedVersion: 'v0.54', // Start from currently known version
   automationJobs: [],
-  autoMinerEnabled: false,
   totalMined: 0,
   lastDrop: null,
   lastSpecialDrop: null,
@@ -127,7 +147,7 @@ const PROCESSING_SPEED_FACTOR: Record<string, number> = {
 };
 
 type Action =
-  | { type: 'MINE_TICK' }
+  | { type: 'MINE_TICK'; pointId?: string }
   | { type: 'SELL_ITEM'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number }
   | { type: 'DEDUCT_FOR_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number }
   | { type: 'RETURN_FROM_LISTING'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; itemName: string }
@@ -136,11 +156,13 @@ type Action =
   | { type: 'START_SMELT'; oreId: string; refined: boolean; quantity?: number }
   | { type: 'COMPLETE_SMELT'; jobIndex: number }
   | { type: 'CANCEL_SMELTIC_JOB'; jobIndex: number; isQueue: boolean }
+  | { type: 'SWITCH_MINING_POINT'; pointId: string }
   | { type: 'UPGRADE_MINING'; upgradeId: string }
   | { type: 'UPGRADE_FOUNDRY' }
   | { type: 'CRAFT_ITEM'; recipeId: string }
   | { type: 'TICK_SMELTING' }
   | { type: 'TOGGLE_AUTO_MINER' }
+  | { type: 'TICK_AUTO_MINERS' }
   | { type: 'TOGGLE_AUTOMATION'; machineId: string; recipeId: string }
   | { type: 'TICK_AUTOMATION' }
   | { type: 'LOAD_STATE'; state: GameState }
@@ -155,6 +177,7 @@ type Action =
   | { type: 'SMELT_EVERYTHING' }
   | { type: 'TICK_GARDEN' }
   | { type: 'ACKNOWLEDGE_UPDATE', version: string }
+  | { type: 'PERFORM_REBIRTH' }
   // Transmutation actions
   | { type: 'START_TRANSMUTATION'; tableId: string; oreId: string; veiniteBoost: number; biomassBoost: boolean }
   | { type: 'COMPLETE_TRANSMUTATION'; tableId: string; result: MutatedOre }
@@ -162,18 +185,18 @@ type Action =
   | { type: 'SELL_MUTATED_ORE'; mutatedOreId: string }
   | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string };
 
-function getMiningSpeed(state: GameState): number {
-  const level = state.miningUpgrades.drill_speed || 0;
+export function getMiningSpeed(point: MiningPoint): number {
+  const level = point.upgrades.drill_speed || 0;
   return 1 + level * 0.15;
 }
 
-function getLuck(state: GameState): number {
-  const level = state.miningUpgrades.ore_scanner || 0;
+export function getLuck(point: MiningPoint): number {
+  const level = point.upgrades.ore_scanner || 0;
   return 1 + level * 0.12;
 }
 
-function getMultiChance(state: GameState): number {
-  const level = state.miningUpgrades.multi_drill || 0;
+export function getMultiChance(point: MiningPoint): number {
+  const level = point.upgrades.multi_drill || 0;
   return level * 0.1;
 }
 
@@ -189,15 +212,34 @@ export function getHarvestDupeChance(level: number): number {
   return level * 0.05; // 5% chance per level (max 50% at lv10)
 }
 
-function gameReducer(state: GameState, action: Action): GameState {
+function checkAchievements(state: GameState): GameState {
+  let newState = state;
+  let newUnlocked = [...state.unlockedAchievements];
+  let changed = false;
+
+  for (const ach of ACHIEVEMENTS) {
+    if (!newUnlocked.includes(ach.id) && ach.condition(state)) {
+      newUnlocked.push(ach.id);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    newState = { ...state, unlockedAchievements: newUnlocked };
+  }
+  return newState;
+}
+
+function gameReducerBase(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'MINE_TICK': {
-      const luck = getLuck(state);
+      const activePoint = state.miningPoints.find(p => p.id === (action.pointId || state.activeMiningPointId)) || state.miningPoints[0];
+      const luck = getLuck(activePoint);
       const ore = rollMiningDrop(luck);
       if (!ore) return state;
 
       let quantity = 1;
-      if (Math.random() < getMultiChance(state)) quantity = 2;
+      if (Math.random() < getMultiChance(activePoint)) quantity = 2;
 
       const newOres = { ...state.ores };
       newOres[ore.id] = (newOres[ore.id] || 0) + quantity;
@@ -387,18 +429,32 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...state, [sourceKey]: newSource, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
     }
 
+    case 'SWITCH_MINING_POINT': {
+      return { ...state, activeMiningPointId: action.pointId };
+    }
+
     case 'UPGRADE_MINING': {
+      const point = state.miningPoints.find(p => p.id === state.activeMiningPointId);
       const upgrade = MINING_UPGRADES.find(u => u.id === action.upgradeId);
-      if (!upgrade) return state;
-      const currentLevel = state.miningUpgrades[upgrade.id] || 0;
+      if (!point || !upgrade) return state;
+
+      const currentLevel = point.upgrades[upgrade.id] || 0;
       if (currentLevel >= upgrade.maxLevel) return state;
       const cost = Math.floor(upgrade.baseCost * Math.pow(upgrade.costMultiplier, currentLevel));
       if (state.currency < cost) return state;
 
+      const newPoints = state.miningPoints.map(p => {
+        if (p.id !== point.id) return p;
+        return {
+          ...p,
+          upgrades: { ...p.upgrades, [upgrade.id]: currentLevel + 1 }
+        };
+      });
+
       return {
         ...state,
         currency: state.currency - cost,
-        miningUpgrades: { ...state.miningUpgrades, [upgrade.id]: currentLevel + 1 },
+        miningPoints: newPoints,
       };
     }
 
@@ -495,7 +551,35 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 
     case 'TOGGLE_AUTO_MINER': {
-      return { ...state, autoMinerEnabled: !state.autoMinerEnabled };
+      const newPoints = state.miningPoints.map(p => {
+        if (p.id !== state.activeMiningPointId) return p;
+        return { ...p, autoMinerEnabled: !p.autoMinerEnabled };
+      });
+      return { ...state, miningPoints: newPoints };
+    }
+
+    case 'TICK_AUTO_MINERS': {
+      let newState = state;
+      const now = Date.now();
+      let changed = false;
+
+      const newPoints = state.miningPoints.map(point => {
+        if (!point.autoMinerEnabled) return point;
+        const level = point.upgrades.auto_miner_speed || 0;
+        const intervalMs = Math.max(2000, 10000 * Math.pow(0.85, level));
+        
+        if (now - point.lastAutoMine >= intervalMs) {
+          newState = gameReducerBase(newState, { type: 'MINE_TICK', pointId: point.id });
+          changed = true;
+          return { ...point, lastAutoMine: now };
+        }
+        return point;
+      });
+
+      if (changed) {
+        newState = { ...newState, miningPoints: newPoints };
+      }
+      return changed ? newState : state;
     }
 
     case 'TOGGLE_AUTOMATION': {
@@ -835,6 +919,35 @@ function gameReducer(state: GameState, action: Action): GameState {
       return { ...state, lastViewedVersion: action.version };
     }
 
+    case 'PERFORM_REBIRTH': {
+      if (!state.unlockedMachines.includes('quantum_lab')) return state;
+      if (state.currency < 30_000_000) return state;
+      if ((state.ingots['veinite'] || 0) < 30) return state;
+
+      const nextRebirthCount = state.rebirthCount + 1;
+      const numPoints = nextRebirthCount + 1; // You get N+1 points
+
+      const newMiningPoints: MiningPoint[] = [];
+      for (let i = 0; i < numPoints; i++) {
+        newMiningPoints.push({
+          id: `mp_${nextRebirthCount}_${i}`,
+          name: `Extraction Point 0${i + 1}`,
+          upgrades: { drill_speed: 0, ore_scanner: 0, multi_drill: 0, auto_miner_speed: 0 },
+          autoMinerEnabled: false,
+          lastAutoMine: 0,
+        });
+      }
+
+      return {
+        ...initialState,
+        totalMined: state.totalMined,
+        rebirthCount: nextRebirthCount,
+        unlockedAchievements: state.unlockedAchievements,
+        miningPoints: newMiningPoints,
+        activeMiningPointId: newMiningPoints[0].id,
+      };
+    }
+
     // ─── Transmutation Actions ───────────────────────────────────────────────
     case 'START_TRANSMUTATION': {
       const { tableId, oreId, veiniteBoost, biomassBoost } = action;
@@ -991,6 +1104,11 @@ function gameReducer(state: GameState, action: Action): GameState {
   }
 }
 
+function gameReducer(state: GameState, action: Action): GameState {
+  const nextState = gameReducerBase(state, action);
+  return checkAchievements(nextState);
+}
+
 // ─── Automation interval by machine tier ─────────────────────────────────────
 const MACHINE_INTERVALS: Record<string, number> = {
   wafer_cutter: 12000,
@@ -1043,8 +1161,24 @@ function migrateState(saved: any): GameState {
     state.foundryTier = FOUNDRY_TIER_REMAP[state.foundryTier];
   }
 
+  // Handle older save shape for mining upgrades
+  if (!state.miningPoints || state.miningPoints.length === 0) {
+    const legacyUpgrades = (state as any).miningUpgrades || { drill_speed: 0, ore_scanner: 0, multi_drill: 0 };
+    const legacyAuto = !!(state as any).autoMinerEnabled;
+    state.miningPoints = [{
+      id: 'mp_legacy',
+      name: 'Extraction Point 01',
+      upgrades: legacyUpgrades,
+      autoMinerEnabled: legacyAuto,
+      lastAutoMine: 0,
+    }];
+    state.activeMiningPointId = 'mp_legacy';
+  }
+
+  if (state.rebirthCount === undefined) state.rebirthCount = 0;
+  if (!state.unlockedAchievements) state.unlockedAchievements = [];
+
   if (!state.automationJobs) state.automationJobs = [];
-  if (state.autoMinerEnabled === undefined) state.autoMinerEnabled = false;
   if (!state.seeds) state.seeds = {};
   if (!state.greenhouses) state.greenhouses = [];
   if (!state.lastSpecialDrop) state.lastSpecialDrop = null;
@@ -1153,14 +1287,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-miner tick
+  // Auto-miner tick loop (multi-point support)
   useEffect(() => {
-    if (!state.autoMinerEnabled) return;
-    const autoMinerLevel = state.miningUpgrades.auto_miner_speed || 0;
-    const intervalMs = Math.max(2000, 10000 * Math.pow(0.85, autoMinerLevel));
-    const interval = setInterval(() => dispatch({ type: 'MINE_TICK' }), intervalMs);
+    const interval = setInterval(() => dispatch({ type: 'TICK_AUTO_MINERS' }), 100);
     return () => clearInterval(interval);
-  }, [state.autoMinerEnabled, state.miningUpgrades.auto_miner_speed]);
+  }, []);
 
   // Garden tick
   useEffect(() => {
@@ -1176,7 +1307,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [state.transmutationTables.length]);
 
-  const miningSpeed = getMiningSpeed(state);
+  const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
+  const miningSpeed = getMiningSpeed(activePoint);
   const foundry = getCurrentFoundry(state);
 
   return (
