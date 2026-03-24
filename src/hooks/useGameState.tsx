@@ -105,7 +105,7 @@ export interface GameState {
   automationJobs: AutomationJob[];
   totalMined: number;
   lastDrop: { ore: Ore; quantity: number } | null;
-  lastSpecialDrop: string | null; // name of last special drop for UI feedback
+  lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null;
   greenhouses: Greenhouse[];
 }
 
@@ -236,10 +236,10 @@ function checkAchievements(state: GameState): GameState {
 function gameReducerBase(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'GIVE_ITEM': {
-      const { itemId, quantity } = action;
+      const { itemId, quantity } = action as { type: 'GIVE_ITEM'; itemId: string; quantity: number };
       const ore = ORE_MAP[itemId];
       const special = SPECIAL_MINING_DROPS.find(s => s.id === itemId);
-      
+      let lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null = null;
       const newItems = { ...state.items };
       const newOres = { ...state.ores };
       
@@ -249,13 +249,21 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       } else {
         newOres[itemId] = (newOres[itemId] || 0) + quantity;
       }
+
+      if (special) {
+        lastSpecialDrop = { 
+          id: special.id, 
+          name: special.name, 
+          rarity: special.rarity, 
+          timestamp: Date.now() 
+        };
+      }
       
       return { 
         ...state, 
         items: newItems, 
         ores: newOres,
-        // Set lastSpecialDrop to trigger the animation/sound if it's an artifact
-        lastSpecialDrop: (special && special.rarity === 'artifact') ? itemId : state.lastSpecialDrop 
+        lastSpecialDrop: lastSpecialDrop || state.lastSpecialDrop
       };
     }
 
@@ -271,16 +279,15 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       const newOres = { ...state.ores };
       newOres[ore.id] = (newOres[ore.id] || 0) + quantity;
 
-      // Check for special drops
       const specialDrops = rollSpecialDrops();
       let newItems = state.items;
-      let lastSpecialDrop: string | null = null;
+      let lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null = null;
 
       if (specialDrops.length > 0) {
         newItems = { ...state.items };
         for (const drop of specialDrops) {
           newItems[drop.id] = (newItems[drop.id] || 0) + 1;
-          lastSpecialDrop = drop.name;
+          lastSpecialDrop = { id: drop.id, name: drop.name, rarity: drop.rarity, timestamp: Date.now() };
         }
       }
 
@@ -295,17 +302,22 @@ function gameReducerBase(state: GameState, action: Action): GameState {
     }
 
     case 'SELL_ITEM': {
-      const { itemId, itemType, quantity } = action;
+      const { itemId, itemType, quantity } = action as { type: 'SELL_ITEM'; itemId: string; itemType: any; quantity: number };
       const ore = ORE_MAP[itemId];
       let value = ore ? ore.value : 10;
       if (itemType === 'refined') value = Math.floor(value * 1.5);
       if (itemType === 'ingot') value = Math.floor(value * 2.5);
       if (itemType === 'item') {
-        const recipe = RECIPE_MAP[itemId];
-        value = recipe ? recipe.ingredients.reduce((sum, ing) => {
-          const o = ORE_MAP[ing.itemId];
-          return sum + (o ? o.value * ing.quantity : 20 * ing.quantity);
-        }, 0) * 2 : 50;
+        const special = SPECIAL_MINING_DROPS.find(s => s.id === itemId);
+        if (special && special.value) {
+          value = special.value;
+        } else {
+          const recipe = RECIPE_MAP[itemId];
+          value = recipe ? recipe.ingredients.reduce((sum, ing) => {
+            const o = ORE_MAP[ing.itemId];
+            return sum + (o ? o.value * ing.quantity : 20 * ing.quantity);
+          }, 0) * 2 : 50;
+        }
       }
 
       const source = itemType === 'ore' ? 'ores' : itemType === 'refined' ? 'refinedOres' : itemType === 'ingot' ? 'ingots' : 'items';
@@ -1475,13 +1487,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Sound effect for artifacts
   useEffect(() => {
-    if (state.lastSpecialDrop) {
-      const special = SPECIAL_MINING_DROPS.find(s => s.id === state.lastSpecialDrop || s.name === state.lastSpecialDrop);
-      if (special && special.rarity === 'artifact') {
-        playSound('artifact', 0.8);
-      }
+    if (state.lastSpecialDrop && state.lastSpecialDrop.rarity === 'artifact') {
+      playSound('artifact', 0.8);
     }
-  }, [state.lastSpecialDrop]);
+  }, [state.lastSpecialDrop?.timestamp]);
 
   return (
     <GameContext.Provider value={{ state, dispatch, miningSpeed, foundry, saveStatus }}>

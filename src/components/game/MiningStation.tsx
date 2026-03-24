@@ -72,12 +72,13 @@ export function MiningStation() {
   useEffect(() => {
     if (state.lastSpecialDrop) {
       const id = ++dropIdRef.current;
-      const special = SPECIAL_MINING_DROPS.find(s => s.id === state.lastSpecialDrop);
-      const rarity = special?.rarity || getItemRarity(state.lastSpecialDrop);
+      const { id: dropId, name, rarity, timestamp } = state.lastSpecialDrop;
+      const special = SPECIAL_MINING_DROPS.find(s => s.id === dropId);
+      
       setDrops(prev => [...prev.slice(-4), { 
         id, 
-        name: special?.name || state.lastSpecialDrop!, 
-        rarity, 
+        name, 
+        rarity: rarity as OreRarity, 
         qty: 1,
         icon: special?.icon 
       }]);
