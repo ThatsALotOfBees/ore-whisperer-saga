@@ -24,7 +24,6 @@ export function playSound(type: keyof typeof SOUND_EFFECTS, volume: number = 0.5
       ctx.resume();
     }
     const now = ctx.currentTime;
- Elias
 
     const sound = SOUND_EFFECTS[type];
     if (sound.startsWith('/') || sound.startsWith('http')) {
