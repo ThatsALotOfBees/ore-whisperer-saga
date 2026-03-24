@@ -112,12 +112,15 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   ];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col">
       <AnimatePresence>
       </AnimatePresence>
       
+      {/* Base Background Layer */}
+      <div className="fixed inset-0 z-[-2] bg-background"></div>
+      
       {/* Global Background Effect */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40 overflow-hidden">
+      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-50 overflow-hidden">
         <LightPillar
           topColor="#5227FF"
           bottomColor="#FF9FFC"
