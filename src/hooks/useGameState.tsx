@@ -1294,18 +1294,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const pendingSaveRef = useRef<GameState | null>(null);
+
   useEffect(() => {
     const { lastDrop, smeltingJobs, lastSpecialDrop, ...toSave } = state;
     localStorage.setItem('voidmarket_state', JSON.stringify(toSave));
+    pendingSaveRef.current = state;
+  }, [state]);
 
-    const serialized = JSON.stringify(toSave);
-    if (serialized === lastSavedRef.current) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      lastSavedRef.current = serialized;
-      saveToSupabase(state);
-    }, 500);
-  }, [state, saveToSupabase]);
+  // Periodic saver (throttle Supabase sync to every 15s to prevent database overload)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!pendingSaveRef.current) return;
+      
+      const stateToSave = pendingSaveRef.current;
+      const { lastDrop, smeltingJobs, lastSpecialDrop, ...toSave } = stateToSave;
+      const serialized = JSON.stringify(toSave);
+      
+      if (serialized !== lastSavedRef.current) {
+        lastSavedRef.current = serialized;
+        saveToSupabase(stateToSave);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [saveToSupabase]);
 
   // Tick smelting
   useEffect(() => {
