@@ -196,6 +196,7 @@ type Action =
   | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<GameState['settings']> }
   | { type: 'TOGGLE_PIN_TAB'; tabId: string }
+  | { type: 'RECEIVE_PURCHASE'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; totalCost: number }
   | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
 
 export function getMiningSpeed(point: MiningPoint): number {
@@ -262,19 +263,50 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       const { itemId, quantity } = action as { type: 'GIVE_ITEM'; itemId: string; quantity: number };
       const ore = ORE_MAP[itemId];
       const special = SPECIAL_MINING_DROPS.find(s => s.id === itemId);
-      let lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null = null;
-      const newItems = { ...state.items };
-      const newOres = { ...state.ores };
       
-      // If it's a special drop or not a known ore, put in items
-      if (special || (!ore && !RECIPE_MAP[itemId])) {
-        newItems[itemId] = (newItems[itemId] || 0) + quantity;
-      } else {
-        newOres[itemId] = (newOres[itemId] || 0) + quantity;
+      let newState = { ...state };
+      
+      // Handle greenhouses specially
+      if (itemId === 'greenhouse') {
+        const newGreenhouses = [...state.greenhouses];
+        for (let i = 0; i < quantity; i++) {
+          newGreenhouses.push({
+            id: `gh_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            plots: [{ plantId: null, plantedAt: null, lastIncomeTick: Date.now() }],
+            growSpeedLevel: 0,
+            harvestLevel: 0,
+          });
+        }
+        newState.greenhouses = newGreenhouses;
+      } 
+      // Handle transmutation tables specially
+      else if (itemId === 'transmutation_table') {
+        const newTables = [...state.transmutationTables];
+        for (let i = 0; i < quantity; i++) {
+          newTables.push({
+            id: `tt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            activeJob: null,
+          });
+        }
+        newState.transmutationTables = newTables;
+      }
+      // Standard item/ore handling
+      else {
+        const newItems = { ...state.items };
+        const newOres = { ...state.ores };
+        
+        if (special || (!ore && !RECIPE_MAP[itemId])) {
+          newItems[itemId] = (newItems[itemId] || 0) + quantity;
+        } else {
+          newOres[itemId] = (newOres[itemId] || 0) + quantity;
+        }
+        
+        newState.items = newItems;
+        newState.ores = newOres;
       }
 
       if (special) {
-        lastSpecialDrop = { 
+        newState.lastSpecialDrop = { 
           id: special.id, 
           name: special.name, 
           rarity: special.rarity, 
@@ -282,12 +314,57 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         };
       }
       
-      return { 
-        ...state, 
-        items: newItems, 
-        ores: newOres,
-        lastSpecialDrop: lastSpecialDrop || state.lastSpecialDrop
+      return newState;
+    }
+
+    case 'RECEIVE_PURCHASE': {
+      const { itemId, itemType, quantity, totalCost } = action as { 
+        type: 'RECEIVE_PURCHASE'; 
+        itemId: string; 
+        itemType: 'ore' | 'refined' | 'ingot' | 'item'; 
+        quantity: number; 
+        totalCost: number 
       };
+      
+      let newState = { ...state, currency: state.currency - totalCost };
+      
+      if (itemType === 'ore') {
+        newState.ores = { ...newState.ores, [itemId]: (newState.ores[itemId] || 0) + quantity };
+      } else if (itemType === 'refined') {
+        newState.refinedOres = { ...newState.refinedOres, [itemId]: (newState.refinedOres[itemId] || 0) + quantity };
+      } else if (itemType === 'ingot') {
+        newState.ingots = { ...newState.ingots, [itemId]: (newState.ingots[itemId] || 0) + quantity };
+      } else if (itemType === 'item') {
+        // Handle greenhouses specially
+        if (itemId === 'greenhouse') {
+          const newGreenhouses = [...newState.greenhouses];
+          for (let i = 0; i < quantity; i++) {
+            newGreenhouses.push({
+              id: `gh_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              plots: [{ plantId: null, plantedAt: null, lastIncomeTick: Date.now() }],
+              growSpeedLevel: 0,
+              harvestLevel: 0,
+            });
+          }
+          newState.greenhouses = newGreenhouses;
+        } 
+        // Handle transmutation tables specially
+        else if (itemId === 'transmutation_table') {
+          const newTables = [...newState.transmutationTables];
+          for (let i = 0; i < quantity; i++) {
+            newTables.push({
+              id: `tt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              activeJob: null,
+            });
+          }
+          newState.transmutationTables = newTables;
+        }
+        else {
+          newState.items = { ...newState.items, [itemId]: (newState.items[itemId] || 0) + quantity };
+        }
+      }
+      
+      return newState;
     }
 
     case 'MINE_TICK': {
