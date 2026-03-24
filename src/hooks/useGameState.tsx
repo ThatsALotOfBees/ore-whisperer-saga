@@ -23,6 +23,7 @@ export interface SmeltingJob {
   refined: boolean;
   startTime: number;
   duration: number;
+  quantity?: number;
 }
 
 export interface AutomationJob {
@@ -361,13 +362,19 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       const newActiveJobs = [...state.smeltingJobs];
       const newQueuedJobs = [...state.smeltingQueue];
 
-      for (let i = 0; i < toStartCount; i++) {
-        const job: SmeltingJob = { oreId, refined, startTime: 0, duration };
-        if (newActiveJobs.length < foundry.slots) {
-          job.startTime = Date.now();
-          newActiveJobs.push(job);
+      let remainingCount = toStartCount;
+      while (remainingCount > 0 && newActiveJobs.length < foundry.slots) {
+        newActiveJobs.push({ oreId, refined, startTime: Date.now(), duration });
+        remainingCount--;
+      }
+
+      if (remainingCount > 0) {
+        // Try to merge with the last queued job if it's the exact same type
+        const last = newQueuedJobs[newQueuedJobs.length - 1];
+        if (last && last.oreId === oreId && last.refined === refined) {
+          last.quantity = (last.quantity || 1) + remainingCount;
         } else {
-          newQueuedJobs.push(job);
+          newQueuedJobs.push({ oreId, refined, startTime: 0, duration, quantity: remainingCount });
         }
       }
 
@@ -392,10 +399,15 @@ function gameReducerBase(state: GameState, action: Action): GameState {
 
       // Fill empty slot from queue
       const foundry = getCurrentFoundry(state);
-      if (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
-        const nextJob = { ...newQueuedJobs.shift()! };
-        nextJob.startTime = Date.now();
-        newActiveJobs.push(nextJob);
+      while (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
+        const nextJob = newQueuedJobs[0];
+        const qty = nextJob.quantity || 1;
+        newActiveJobs.push({ ...nextJob, startTime: Date.now(), quantity: undefined });
+        if (qty > 1) {
+          nextJob.quantity = qty - 1;
+        } else {
+          newQueuedJobs.shift();
+        }
       }
 
       return { ...state, ingots: newIngots, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
@@ -408,7 +420,8 @@ function gameReducerBase(state: GameState, action: Action): GameState {
 
       const sourceKey = job.refined ? 'refinedOres' : 'ores';
       const newSource = { ...state[sourceKey] };
-      newSource[job.oreId] = (newSource[job.oreId] || 0) + 1;
+      const returnQty = isQueue ? (job.quantity || 1) : 1;
+      newSource[job.oreId] = (newSource[job.oreId] || 0) + returnQty;
 
       let newActiveJobs = [...state.smeltingJobs];
       let newQueuedJobs = [...state.smeltingQueue];
@@ -419,10 +432,15 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         newActiveJobs.splice(jobIndex, 1);
         // Start next job from queue if it was an active job cancelled
         const foundry = getCurrentFoundry(state);
-        if (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
-          const nextJob = { ...newQueuedJobs.shift()! };
-          nextJob.startTime = Date.now();
-          newActiveJobs.push(nextJob);
+        while (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
+          const nextJob = newQueuedJobs[0];
+          const qty = nextJob.quantity || 1;
+          newActiveJobs.push({ ...nextJob, startTime: Date.now(), quantity: undefined });
+          if (qty > 1) {
+            nextJob.quantity = qty - 1;
+          } else {
+            newQueuedJobs.shift();
+          }
         }
       }
 
@@ -912,8 +930,22 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       return { ...state, currency: state.currency + totalIncome, greenhouses: newGreenhouses };
     }
 
-    case 'LOAD_STATE':
-      return action.state;
+    case 'LOAD_STATE': {
+      const loaded = action.state;
+      if (loaded.smeltingQueue && loaded.smeltingQueue.length > 0) {
+        const newQueue: SmeltingJob[] = [];
+        for (const job of loaded.smeltingQueue) {
+          const last = newQueue[newQueue.length - 1];
+          if (last && last.oreId === job.oreId && last.refined === job.refined) {
+            last.quantity = (last.quantity || 1) + (job.quantity || 1);
+          } else {
+            newQueue.push({ ...job, quantity: job.quantity || 1 });
+          }
+        }
+        loaded.smeltingQueue = newQueue;
+      }
+      return loaded;
+    }
 
     case 'ACKNOWLEDGE_UPDATE': {
       return { ...state, lastViewedVersion: action.version };
