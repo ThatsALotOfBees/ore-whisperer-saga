@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/hooks/useGameState';
-import { type OreRarity } from '@/data/ores';
+import { type OreRarity, SPECIAL_MINING_DROPS } from '@/data/ores';
 import { getItemRarity } from '@/lib/item-utils';
 
 export function MiningStation() {
   const { state, dispatch, miningSpeed } = useGame();
   const [isMining, setIsMining] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [drops, setDrops] = useState<{ id: number; name: string; rarity: OreRarity; qty: number }[]>([]);
+  const [drops, setDrops] = useState<{ id: number; name: string; rarity: OreRarity; qty: number; icon?: string }[]>([]);
   const dropIdRef = useRef(0);
 
   const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
@@ -72,8 +72,15 @@ export function MiningStation() {
   useEffect(() => {
     if (state.lastSpecialDrop) {
       const id = ++dropIdRef.current;
-      const rarity = getItemRarity(state.lastSpecialDrop);
-      setDrops(prev => [...prev.slice(-4), { id, name: `★ ${state.lastSpecialDrop}`, rarity, qty: 1 }]);
+      const special = SPECIAL_MINING_DROPS.find(s => s.id === state.lastSpecialDrop);
+      const rarity = special?.rarity || getItemRarity(state.lastSpecialDrop);
+      setDrops(prev => [...prev.slice(-4), { 
+        id, 
+        name: special?.name || state.lastSpecialDrop!, 
+        rarity, 
+        qty: 1,
+        icon: special?.icon 
+      }]);
       setTimeout(() => setDrops(prev => prev.filter(d => d.id !== id)), 3000);
     }
   }, [state.lastSpecialDrop]);
@@ -189,7 +196,10 @@ export function MiningStation() {
                 exit={{ opacity: 0, y: -10 }}
                 className={`font-mono-game text-xs px-2 py-1 border rounded-sm bg-card text-rarity-${drop.rarity} border-rarity-${drop.rarity}`}
               >
-                +{drop.qty} {drop.name}
+                <div className="flex items-center gap-1.5">
+                  {drop.icon && <img src={drop.icon} alt="" className="w-4 h-4 object-contain" />}
+                  <span>+{drop.qty} {drop.name}</span>
+                </div>
               </motion.div>
             ))}
           </AnimatePresence>

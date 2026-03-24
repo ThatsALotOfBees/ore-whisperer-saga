@@ -115,25 +115,25 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         {showUpdate && <UpdateNotification onAcknowledge={handleAcknowledge} />}
       </AnimatePresence>
 
-      <header className="border-b border-border px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="font-mono-game text-sm font-bold tracking-[0.15em] uppercase text-primary">
+      <header className="border-b border-border px-2 sm:px-4 py-3 flex items-center justify-between sticky top-0 bg-background z-50">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h1 className="font-mono-game text-[12px] sm:text-sm font-bold tracking-[0.15em] uppercase text-primary whitespace-nowrap">
             VOID<span className="text-accent">—</span>MARKET
           </h1>
-          <span className="font-mono-game text-[9px] text-muted-foreground tracking-wider">{CURRENT_VERSION}</span>
+          <span className="font-mono-game text-[8px] sm:text-[9px] text-muted-foreground tracking-wider">{CURRENT_VERSION}</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="font-mono-game text-[10px] text-accent">{profile?.username}</span>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <span className="font-mono-game text-[9px] sm:text-[10px] text-accent truncate max-w-[80px] sm:max-w-none">{profile?.username}</span>
           <button
             onClick={signOut}
-            className="font-mono-game text-[9px] text-muted-foreground hover:text-destructive transition-colors uppercase"
+            className="font-mono-game text-[8px] sm:text-[9px] text-muted-foreground hover:text-destructive transition-colors uppercase shrink-0"
           >
             Logout
           </button>
         </div>
       </header>
 
-      <nav className="border-b border-border flex overflow-x-auto">
+      <nav className="border-b border-border flex overflow-x-auto scrollbar-hide sticky top-[57px] bg-background z-40">
         {TABS.filter(t => !t.hidden).map(t => (
           <button
             key={t.key}

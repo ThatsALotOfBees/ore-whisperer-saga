@@ -11,6 +11,7 @@ export interface BrowsableItem {
   extra?: string;
   disabled?: boolean;
   disabledReason?: string;
+  icon?: string;
 }
 
 interface ItemBrowserProps {
@@ -160,6 +161,9 @@ export function ItemBrowser({
               }`}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
+                {item.icon && (
+                  <img src={item.icon} alt={item.name} className="w-5 h-5 object-contain rounded-sm" />
+                )}
                 <span className={`font-mono-game text-xs text-rarity-${item.rarity} truncate`}>{item.name}</span>
                 <span className={`text-[8px] uppercase tracking-wider font-mono-game text-rarity-${item.rarity} opacity-50 shrink-0`}>
                   {item.rarity}

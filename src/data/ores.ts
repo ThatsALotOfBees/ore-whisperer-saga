@@ -163,11 +163,13 @@ export interface SpecialDrop {
   name: string;
   chance: number; // flat chance per mine tick
   rarity: OreRarity;
+  icon?: string;
 }
 
 export const SPECIAL_MINING_DROPS: SpecialDrop[] = [
   { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.001, rarity: 'artifact' },
   { id: 'seed_pack', name: 'Seed Pack', chance: 0.01, rarity: 'artifact' },
+  { id: 'kasane_teto', name: 'Kasane Teto', chance: 0.0001, rarity: 'artifact', icon: '/kasane-teto.png' },
 ];
 
 export function rollMiningDrop(luckMultiplier: number = 1): Ore | null {

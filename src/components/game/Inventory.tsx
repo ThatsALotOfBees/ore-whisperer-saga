@@ -1,5 +1,5 @@
 import { useGame } from '@/hooks/useGameState';
-import { ORE_MAP, type OreRarity } from '@/data/ores';
+import { ORE_MAP, SPECIAL_MINING_DROPS, type OreRarity } from '@/data/ores';
 import { RECIPE_MAP } from '@/data/recipes';
 import { useState, useMemo } from 'react';
 import { playSound } from '@/lib/audio';
@@ -57,12 +57,14 @@ export function Inventory() {
           .filter(([, qty]) => qty > 0)
           .map(([id, qty]) => {
             const recipe = RECIPE_MAP[id];
+            const special = SPECIAL_MINING_DROPS.find(s => s.id === id);
             return {
               id,
-              name: recipe?.name || id,
-              rarity: getItemRarity(id),
+              name: recipe?.name || special?.name || id,
+              rarity: recipe ? getItemRarity(id) : (special?.rarity || 'common'),
               quantity: qty,
-              category: recipe?.category || 'unknown',
+              category: recipe?.category || 'special',
+              icon: special?.icon,
             };
           });
     }
