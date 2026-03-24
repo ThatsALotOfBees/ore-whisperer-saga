@@ -89,8 +89,8 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   const { state, dispatch } = useGame();
 
   const hasMachines = state.unlockedMachines.length > 0;
-  const hasGarden = state.greenhouses.length > 0;
-  const hasTransmuter = state.unlockedMachines.includes('sanguinite_transmutation_table');
+  const hasGarden = state.greenhouses.length > 0 || (state.items?.greenhouse || 0) > 0;
+  const hasTransmuter = state.unlockedMachines.includes('sanguinite_transmutation_table') || state.transmutationTables.length > 0 || (state.items?.transmutation_table || 0) > 0;
   const hasRebirth = state.rebirthCount > 0 || state.unlockedMachines.includes('quantum_lab');
 
   const showUpdate = state.lastViewedVersion !== CURRENT_VERSION;
