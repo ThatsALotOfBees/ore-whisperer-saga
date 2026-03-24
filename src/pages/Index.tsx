@@ -14,11 +14,13 @@ import { GardenPanel } from '@/components/game/GardenPanel';
 import { TransmutationPanel } from '@/components/game/TransmutationPanel';
 import { AchievementsPanel } from '@/components/game/AchievementsPanel';
 import { RebirthPanel } from '@/components/game/RebirthPanel';
+import { SidebarNav } from '@/components/game/SidebarNav';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 import { TabBackground } from '@/components/game/TabBackground';
 import { SettingsButton } from '@/components/game/SettingsButton';
+import { Button } from '@/components/ui/button';
 import LightPillar from '@/components/ui/LightPillar';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
@@ -140,12 +142,16 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         </div>
       )}
 
-      <header className="border-b border-border/20 px-2 sm:px-4 py-3 flex items-center justify-between sticky top-0 bg-background/40 backdrop-blur-sm z-50">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <h1 className="font-mono-game text-[12px] sm:text-sm font-bold tracking-[0.15em] uppercase text-primary whitespace-nowrap">
-            VOID<span className="text-accent">—</span>MARKET
-          </h1>
-          <span className="font-mono-game text-[8px] sm:text-[9px] text-muted-foreground tracking-wider">{CURRENT_VERSION}</span>
+      <header className="border-b border-border/20 px-2 sm:px-4 py-2 flex items-center justify-between sticky top-0 bg-background/60 backdrop-blur-md z-50">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <SidebarNav currentTab={tab} setTab={setTab} tabs={TABS} />
+          <div className="h-4 w-px bg-border/40 mx-1 hidden sm:block" />
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h1 className="font-mono-game text-[12px] sm:text-sm font-bold tracking-[0.15em] uppercase text-primary whitespace-nowrap">
+              VOID<span className="text-accent">—</span>MARKET
+            </h1>
+            <span className="font-mono-game text-[8px] sm:text-[9px] text-muted-foreground tracking-wider opacity-50">{CURRENT_VERSION}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
           <span className="font-mono-game text-[9px] sm:text-[10px] text-accent truncate max-w-[80px] sm:max-w-none">{profile?.username}</span>
@@ -158,15 +164,15 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         </div>
       </header>
 
-      <nav className="border-b border-border/20 flex overflow-x-auto scrollbar-hide sticky top-[57px] bg-background/40 backdrop-blur-sm z-40">
-        {TABS.filter(t => !t.hidden).map(t => (
+      <nav className="border-b border-border/10 flex overflow-x-auto scrollbar-hide sticky top-[53px] bg-background/20 backdrop-blur-sm z-40 px-2">
+        {TABS.filter(t => !t.hidden && state.pinnedTabs?.includes(t.key)).map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`font-mono-game text-[11px] uppercase tracking-[0.15em] px-4 py-2.5 border-b-2 transition-colors whitespace-nowrap ${
+            className={`font-mono-game text-[9px] sm:text-[10px] uppercase tracking-[0.2em] px-4 py-3 border-b-2 transition-all duration-300 ${
               tab === t.key
-                ? 'border-primary text-primary bg-primary/5'
-                : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30'
+                ? 'border-primary text-primary bg-primary/5 shadow-[inset_0_-8px_10px_-8px_rgba(var(--primary),0.2)]'
+                : 'border-transparent text-muted-foreground/60 hover:text-foreground hover:bg-white/5'
             }`}
           >
             {t.label}

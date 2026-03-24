@@ -110,6 +110,7 @@ export interface GameState {
   settings: {
     showBackground: boolean;
   };
+  pinnedTabs: string[];
 }
 
 const initialState: GameState = {
@@ -144,6 +145,7 @@ const initialState: GameState = {
   settings: {
     showBackground: true,
   },
+  pinnedTabs: ['mine', 'inventory', 'upgrades'],
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -193,6 +195,7 @@ type Action =
   | { type: 'SELL_MUTATED_ORE'; mutatedOreId: string }
   | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<GameState['settings']> }
+  | { type: 'TOGGLE_PIN_TAB'; tabId: string }
   | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
 
 export function getMiningSpeed(point: MiningPoint): number {
@@ -247,6 +250,14 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         ...state,
         settings: { ...state.settings, ...action.settings }
       };
+    case 'TOGGLE_PIN_TAB': {
+      const { tabId } = action as { type: 'TOGGLE_PIN_TAB'; tabId: string };
+      const pinned = state.pinnedTabs || [];
+      const newPinned = pinned.includes(tabId)
+        ? pinned.filter(t => t !== tabId)
+        : [...pinned, tabId];
+      return { ...state, pinnedTabs: newPinned };
+    }
     case 'GIVE_ITEM': {
       const { itemId, quantity } = action as { type: 'GIVE_ITEM'; itemId: string; quantity: number };
       const ore = ORE_MAP[itemId];
