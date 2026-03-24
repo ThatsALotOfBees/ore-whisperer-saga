@@ -18,9 +18,10 @@ import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 import { TabBackground } from '@/components/game/TabBackground';
+import { SettingsPanel } from '@/components/game/SettingsPanel';
 import LightPillar from '@/components/ui/LightPillar';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth' | 'settings';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -109,6 +110,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'achievements', label: 'Trophies' },
     { key: 'rebirth', label: '🌌 Rebirth', hidden: !hasRebirth },
     { key: 'chat', label: 'Chat' },
+    { key: 'settings', label: '⚙ Settings' },
   ];
 
   return (
@@ -120,22 +122,24 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
       <div className="fixed inset-0 z-[-2] bg-background"></div>
       
       {/* Global Background Effect */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-50 overflow-hidden">
-        <LightPillar
-          topColor="#5227FF"
-          bottomColor="#FF9FFC"
-          intensity={0.6}
-          rotationSpeed={0.2}
-          glowAmount={0.002}
-          pillarWidth={4}
-          pillarHeight={0.3}
-          noiseIntensity={0.3}
-          pillarRotation={20}
-          interactive={false}
-          mixBlendMode="screen"
-          quality="high"
-        />
-      </div>
+      {state.settings?.showBackground !== false && (
+        <div className="fixed inset-0 z-[-1] pointer-events-none opacity-50 overflow-hidden">
+          <LightPillar
+            topColor="#5227FF"
+            bottomColor="#FF9FFC"
+            intensity={0.6}
+            rotationSpeed={0.2}
+            glowAmount={0.002}
+            pillarWidth={4}
+            pillarHeight={0.3}
+            noiseIntensity={0.3}
+            pillarRotation={20}
+            interactive={false}
+            mixBlendMode="screen"
+            quality="high"
+          />
+        </div>
+      )}
 
       <header className="border-b border-border/20 px-2 sm:px-4 py-3 flex items-center justify-between sticky top-0 bg-background/40 backdrop-blur-sm z-50">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -194,6 +198,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
               {tab === 'achievements' && <AchievementsPanel />}
               {tab === 'rebirth' && <RebirthPanel />}
               {tab === 'chat' && <ChatRoom />}
+              {tab === 'settings' && <SettingsPanel />}
             </TabBackground>
           </motion.div>
         </AnimatePresence>

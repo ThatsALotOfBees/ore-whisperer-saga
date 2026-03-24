@@ -107,6 +107,9 @@ export interface GameState {
   lastDrop: { ore: Ore; quantity: number } | null;
   lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null;
   greenhouses: Greenhouse[];
+  settings: {
+    showBackground: boolean;
+  };
 }
 
 const initialState: GameState = {
@@ -138,6 +141,9 @@ const initialState: GameState = {
   greenhouses: [],
   transmutationTables: [],
   mutatedOres: [],
+  settings: {
+    showBackground: true,
+  },
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -186,6 +192,7 @@ type Action =
   | { type: 'TICK_TRANSMUTATION' }
   | { type: 'SELL_MUTATED_ORE'; mutatedOreId: string }
   | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string }
+  | { type: 'UPDATE_SETTINGS'; settings: Partial<GameState['settings']> }
   | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
 
 export function getMiningSpeed(point: MiningPoint): number {
@@ -235,6 +242,11 @@ function checkAchievements(state: GameState): GameState {
 
 function gameReducerBase(state: GameState, action: Action): GameState {
   switch (action.type) {
+    case 'UPDATE_SETTINGS':
+      return {
+        ...state,
+        settings: { ...state.settings, ...action.settings }
+      };
     case 'GIVE_ITEM': {
       const { itemId, quantity } = action as { type: 'GIVE_ITEM'; itemId: string; quantity: number };
       const ore = ORE_MAP[itemId];
