@@ -43,7 +43,7 @@ function GameContent() {
   );
 }
 
-const CURRENT_VERSION = 'v0.69';
+const CURRENT_VERSION = 'v0.70';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
