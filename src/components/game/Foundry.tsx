@@ -129,15 +129,16 @@ export function Foundry() {
       {state.smeltingQueue.length > 0 && (
         <div className="space-y-2">
           <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">
-            Smelting Queue ({state.smeltingQueue.length})
+            Smelting Queue ({state.smeltingQueue.reduce((acc, job) => acc + (job.quantity || 1), 0)})
           </p>
           <div className="max-h-[20vh] overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
             {state.smeltingQueue.map((job, i) => {
               const ore = ORE_MAP[job.oreId];
+              const qty = job.quantity || 1;
               return (
                 <div key={i} className="border border-border/50 bg-card/50 px-3 py-1.5 rounded-sm flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span className="font-mono-game text-[10px] text-foreground/80">{ore?.name || job.oreId} {job.refined ? '(Refined)' : ''}</span>
+                    <span className="font-mono-game text-[10px] text-foreground/80">{ore?.name || job.oreId} {job.refined ? '(Refined)' : ''} x{qty}</span>
                     <span className="font-mono-game text-[7px] text-muted-foreground/60 uppercase tracking-tighter">Waiting for slot...</span>
                   </div>
                   <button
