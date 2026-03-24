@@ -85,7 +85,23 @@
   .text-rarity-legendary { color: hsl(var(--ore-legendary)); }
   .text-rarity-mythic { color: hsl(var(--ore-mythic)); text-shadow: 0 0 10px hsl(var(--ore-mythic) / 0.7); }
   .text-rarity-exotic { color: hsl(var(--ore-exotic)); text-shadow: 0 0 8px hsl(var(--ore-exotic) / 0.6); }
-  .text-rarity-artifact { color: hsl(var(--ore-artifact)); text-shadow: 0 0 10px hsl(var(--ore-artifact) / 0.8); }
+  .text-rarity-artifact { 
+    background: linear-gradient(
+      to right,
+      #1a0033 0%,
+      #4B0082 25%,
+      #8F00FF 50%,
+      #BF00FF 75%,
+      #1a0033 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: artifact-shine 3s linear infinite;
+    text-shadow: 0 0 12px hsl(var(--ore-artifact) / 0.5);
+    display: inline-block;
+  }
   .bg-rarity-common { background-color: hsl(var(--ore-common) / 0.15); }
   .bg-rarity-uncommon { background-color: hsl(var(--ore-uncommon) / 0.15); }
   .bg-rarity-rare { background-color: hsl(var(--ore-rare) / 0.15); }
@@ -126,4 +142,9 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+}
+
+@keyframes artifact-shine {
+  from { background-position: 0% center; }
+  to { background-position: 200% center; }
 }
