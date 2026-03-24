@@ -167,8 +167,8 @@ export interface SpecialDrop {
 }
 
 export const SPECIAL_MINING_DROPS: SpecialDrop[] = [
-  { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.001, rarity: 'artifact' },
-  { id: 'seed_pack', name: 'Seed Pack', chance: 0.01, rarity: 'artifact' },
+  { id: 'plant_in_a_boot', name: 'Plant In A Boot', chance: 0.001, rarity: 'epic' },
+  { id: 'seed_pack', name: 'Seed Pack', chance: 0.01, rarity: 'epic' },
   { id: 'kasane_teto', name: 'Kasane Teto', chance: 0.0001, rarity: 'artifact', icon: '/kasane-teto.png' },
 ];
 
