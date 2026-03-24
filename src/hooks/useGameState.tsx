@@ -185,7 +185,8 @@ type Action =
   | { type: 'COMPLETE_TRANSMUTATION'; tableId: string; result: MutatedOre }
   | { type: 'TICK_TRANSMUTATION' }
   | { type: 'SELL_MUTATED_ORE'; mutatedOreId: string }
-  | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string };
+  | { type: 'DISCARD_MUTATED_ORE'; mutatedOreId: string }
+  | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
 
 export function getMiningSpeed(point: MiningPoint): number {
   const level = point.upgrades.drill_speed || 0;
@@ -234,6 +235,30 @@ function checkAchievements(state: GameState): GameState {
 
 function gameReducerBase(state: GameState, action: Action): GameState {
   switch (action.type) {
+    case 'GIVE_ITEM': {
+      const { itemId, quantity } = action;
+      const ore = ORE_MAP[itemId];
+      const special = SPECIAL_MINING_DROPS.find(s => s.id === itemId);
+      
+      const newItems = { ...state.items };
+      const newOres = { ...state.ores };
+      
+      // If it's a special drop or not a known ore, put in items
+      if (special || (!ore && !RECIPE_MAP[itemId])) {
+        newItems[itemId] = (newItems[itemId] || 0) + quantity;
+      } else {
+        newOres[itemId] = (newOres[itemId] || 0) + quantity;
+      }
+      
+      return { 
+        ...state, 
+        items: newItems, 
+        ores: newOres,
+        // Set lastSpecialDrop to trigger the animation/sound if it's an artifact
+        lastSpecialDrop: (special && special.rarity === 'artifact') ? itemId : state.lastSpecialDrop 
+      };
+    }
+
     case 'MINE_TICK': {
       const activePoint = state.miningPoints.find(p => p.id === (action.pointId || state.activeMiningPointId)) || state.miningPoints[0];
       const luck = getLuck(activePoint);
@@ -1431,6 +1456,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
   const miningSpeed = getMiningSpeed(activePoint);
   const foundry = getCurrentFoundry(state);
+
+  // Expose global giveMe command for console
+  useEffect(() => {
+    (window as any).giveMe = (itemNameOrId: string, quantity: number = 1) => {
+      const q = Number(quantity) || 1;
+      const term = itemNameOrId.toLowerCase();
+      
+      const special = SPECIAL_MINING_DROPS.find(s => s.name.toLowerCase() === term || s.id === term);
+      const ore = ALL_ORES.find(o => o.name.toLowerCase() === term || o.id === term);
+      const recipe = Object.values(RECIPE_MAP).find(r => r.name.toLowerCase() === term || r.id === term);
+      
+      const id = special?.id || ore?.id || recipe?.id || itemNameOrId;
+      dispatch({ type: 'GIVE_ITEM', itemId: id, quantity: q });
+      console.log(`%c[ADMIN] %cGiving ${q}x ${id}`, 'color: #8F00FF; font-weight: bold', 'color: inherit');
+    };
+  }, [dispatch]);
 
   // Sound effect for artifacts
   useEffect(() => {
