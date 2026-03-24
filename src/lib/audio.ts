@@ -3,6 +3,7 @@ export const SOUND_EFFECTS = {
   error: 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
   click: 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
   complete: 'data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==',
+  artifact: '/sounds/epic-loot.mp3',
 };
 
 let audioContext: AudioContext | null = null;
@@ -20,6 +21,14 @@ export function playSound(type: keyof typeof SOUND_EFFECTS, volume: number = 0.5
   try {
     const ctx = getAudioContext();
     const now = ctx.currentTime;
+
+    const sound = SOUND_EFFECTS[type];
+    if (sound.startsWith('/') || sound.startsWith('http')) {
+      const audio = new Audio(sound);
+      audio.volume = volume;
+      audio.play().catch(() => { /* User interaction might be required */ });
+      return;
+    }
 
     const oscillator = ctx.createOscillator();
     const gainNode = ctx.createGain();

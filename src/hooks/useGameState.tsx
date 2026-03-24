@@ -1,7 +1,8 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { ALL_ORES, ORE_MAP, rollMiningDrop, rollSpecialDrops, type Ore, type OreRarity } from '@/data/ores';
+import { ALL_ORES, ORE_MAP, SPECIAL_MINING_DROPS, rollMiningDrop, rollSpecialDrops, type Ore, type OreRarity } from '@/data/ores';
 import { MINING_UPGRADES, FOUNDRY_TIERS, CRAFTING_RECIPES, RECIPE_MAP, type FoundryUpgrade } from '@/data/recipes';
+import { playSound } from '@/lib/audio';
 import {
   PLANT_MAP, ALL_PLANTS, rollSeedFromPack,
   PLOT_COST_BASE, PLOT_COST_MULTIPLIER,
@@ -1430,6 +1431,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
   const miningSpeed = getMiningSpeed(activePoint);
   const foundry = getCurrentFoundry(state);
+
+  // Sound effect for artifacts
+  useEffect(() => {
+    if (state.lastSpecialDrop) {
+      const special = SPECIAL_MINING_DROPS.find(s => s.id === state.lastSpecialDrop || s.name === state.lastSpecialDrop);
+      if (special && special.rarity === 'artifact') {
+        playSound('artifact', 0.8);
+      }
+    }
+  }, [state.lastSpecialDrop]);
 
   return (
     <GameContext.Provider value={{ state, dispatch, miningSpeed, foundry, saveStatus }}>
