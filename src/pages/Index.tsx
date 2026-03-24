@@ -18,10 +18,10 @@ import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
 import { TabBackground } from '@/components/game/TabBackground';
-import { SettingsPanel } from '@/components/game/SettingsPanel';
+import { SettingsButton } from '@/components/game/SettingsButton';
 import LightPillar from '@/components/ui/LightPillar';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth' | 'settings';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -110,7 +110,6 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'achievements', label: 'Trophies' },
     { key: 'rebirth', label: '🌌 Rebirth', hidden: !hasRebirth },
     { key: 'chat', label: 'Chat' },
-    { key: 'settings', label: '⚙ Settings' },
   ];
 
   return (
@@ -198,7 +197,6 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
               {tab === 'achievements' && <AchievementsPanel />}
               {tab === 'rebirth' && <RebirthPanel />}
               {tab === 'chat' && <ChatRoom />}
-              {tab === 'settings' && <SettingsPanel />}
             </TabBackground>
           </motion.div>
         </AnimatePresence>
@@ -206,6 +204,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
 
       <SaveIndicator />
       <DiscordButton />
+      <SettingsButton />
 
       <footer className="border-t border-border px-4 py-2 text-center">
         <p className="font-mono-game text-[9px] text-muted-foreground/40 tracking-wider uppercase">
