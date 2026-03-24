@@ -17,6 +17,8 @@ import { RebirthPanel } from '@/components/game/RebirthPanel';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
+import { TabBackground } from '@/components/game/TabBackground';
+import LightPillar from '@/components/ui/LightPillar';
 
 type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
 
@@ -112,10 +114,27 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <AnimatePresence>
-        {showUpdate && <UpdateNotification onAcknowledge={handleAcknowledge} />}
       </AnimatePresence>
+      
+      {/* Global Background Effect */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none opacity-40 overflow-hidden">
+        <LightPillar
+          topColor="#5227FF"
+          bottomColor="#FF9FFC"
+          intensity={0.6}
+          rotationSpeed={0.2}
+          glowAmount={0.002}
+          pillarWidth={4}
+          pillarHeight={0.3}
+          noiseIntensity={0.3}
+          pillarRotation={20}
+          interactive={false}
+          mixBlendMode="screen"
+          quality="high"
+        />
+      </div>
 
-      <header className="border-b border-border px-2 sm:px-4 py-3 flex items-center justify-between sticky top-0 bg-background z-50">
+      <header className="border-b border-border/20 px-2 sm:px-4 py-3 flex items-center justify-between sticky top-0 bg-background/40 backdrop-blur-sm z-50">
         <div className="flex items-center gap-2 sm:gap-3">
           <h1 className="font-mono-game text-[12px] sm:text-sm font-bold tracking-[0.15em] uppercase text-primary whitespace-nowrap">
             VOID<span className="text-accent">—</span>MARKET
@@ -133,7 +152,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         </div>
       </header>
 
-      <nav className="border-b border-border flex overflow-x-auto scrollbar-hide sticky top-[57px] bg-background z-40">
+      <nav className="border-b border-border/20 flex overflow-x-auto scrollbar-hide sticky top-[57px] bg-background/40 backdrop-blur-sm z-40">
         {TABS.filter(t => !t.hidden).map(t => (
           <button
             key={t.key}
@@ -149,27 +168,30 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         ))}
       </nav>
 
-      <main className="flex-1 max-w-3xl mx-auto w-full">
+      <main className="flex-1 max-w-4xl mx-auto w-full p-2 sm:p-4 pb-24">
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.15 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="w-full h-full"
           >
-            {tab === 'mine' && <MiningStation />}
-            {tab === 'inventory' && <Inventory />}
-            {tab === 'foundry' && <Foundry />}
-            {tab === 'craft' && <CraftingStation />}
-            {tab === 'machines' && <MachinesPanel />}
-            {tab === 'garden' && <GardenPanel />}
-            {tab === 'transmute' && <TransmutationPanel />}
-            {tab === 'market' && <Marketplace />}
-            {tab === 'upgrades' && <UpgradeShop />}
-            {tab === 'achievements' && <AchievementsPanel />}
-            {tab === 'rebirth' && <RebirthPanel />}
-            {tab === 'chat' && <ChatRoom />}
+            <TabBackground>
+              {tab === 'mine' && <MiningStation />}
+              {tab === 'inventory' && <Inventory />}
+              {tab === 'foundry' && <Foundry />}
+              {tab === 'craft' && <CraftingStation />}
+              {tab === 'machines' && <MachinesPanel />}
+              {tab === 'garden' && <GardenPanel />}
+              {tab === 'transmute' && <TransmutationPanel />}
+              {tab === 'market' && <Marketplace />}
+              {tab === 'upgrades' && <UpgradeShop />}
+              {tab === 'achievements' && <AchievementsPanel />}
+              {tab === 'rebirth' && <RebirthPanel />}
+              {tab === 'chat' && <ChatRoom />}
+            </TabBackground>
           </motion.div>
         </AnimatePresence>
       </main>
