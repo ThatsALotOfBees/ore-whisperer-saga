@@ -577,9 +577,11 @@ function gameReducerBase(state: GameState, action: Action): GameState {
     }
 
     case 'TICK_AUTO_MINERS': {
-      let newState = state;
       const now = Date.now();
       let changed = false;
+      const newOres = { ...state.ores };
+      const newItems = { ...state.items };
+      let totalMinedGained = 0;
 
       const newPoints = state.miningPoints.map(point => {
         if (!point.autoMinerEnabled) return point;
@@ -587,17 +589,33 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         const intervalMs = Math.max(2000, 10000 * Math.pow(0.85, level));
         
         if (now - point.lastAutoMine >= intervalMs) {
-          newState = gameReducerBase(newState, { type: 'MINE_TICK', pointId: point.id });
+          const luck = getLuck(point);
+          const ore = rollMiningDrop(luck);
+          if (ore) {
+            let quantity = 1;
+            if (Math.random() < getMultiChance(point)) quantity = 2;
+            newOres[ore.id] = (newOres[ore.id] || 0) + quantity;
+            totalMinedGained += quantity;
+
+            const specialDrops = rollSpecialDrops();
+            specialDrops.forEach(drop => {
+              newItems[drop.id] = (newItems[drop.id] || 0) + 1;
+            });
+          }
           changed = true;
           return { ...point, lastAutoMine: now };
         }
         return point;
       });
 
-      if (changed) {
-        newState = { ...newState, miningPoints: newPoints };
-      }
-      return changed ? newState : state;
+      if (!changed) return state;
+      return { 
+        ...state, 
+        ores: newOres, 
+        items: newItems, 
+        totalMined: state.totalMined + totalMinedGained,
+        miningPoints: newPoints 
+      };
     }
 
     case 'TOGGLE_AUTOMATION': {
@@ -637,19 +655,22 @@ function gameReducerBase(state: GameState, action: Action): GameState {
     case 'TICK_AUTOMATION': {
       const now = Date.now();
       let changed = false;
-      let newState = state;
+      const newIngots = { ...state.ingots };
+      const newItems = { ...state.items };
+      const newJobs = [...state.automationJobs];
 
-      for (const job of state.automationJobs) {
+      for (let i = 0; i < newJobs.length; i++) {
+        const job = newJobs[i];
         if (!job.enabled) continue;
         if (now - job.lastCraft < job.interval) continue;
 
         const recipe = RECIPE_MAP[job.recipeId];
         if (!recipe) continue;
-        if (recipe.requiredMachine && !newState.unlockedMachines.includes(recipe.requiredMachine)) continue;
+        if (recipe.requiredMachine && !state.unlockedMachines.includes(recipe.requiredMachine)) continue;
 
         let canCraft = true;
         for (const ing of recipe.ingredients) {
-          const source = ing.type === 'ingot' ? newState.ingots : newState.items;
+          const source = ing.type === 'ingot' ? newIngots : newItems;
           if ((source[ing.itemId] || 0) < ing.quantity) {
             canCraft = false;
             break;
@@ -657,32 +678,69 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         }
 
         if (canCraft) {
-          newState = gameReducer(newState, { type: 'CRAFT_ITEM', recipeId: job.recipeId });
-          newState = {
-            ...newState,
-            automationJobs: newState.automationJobs.map(j =>
-              j.machineId === job.machineId ? { ...j, lastCraft: now } : j
-            ),
-          };
+          // Deduct
+          for (const ing of recipe.ingredients) {
+            if (ing.type === 'ingot') {
+              newIngots[ing.itemId] -= ing.quantity;
+              if (newIngots[ing.itemId] <= 0) delete newIngots[ing.itemId];
+            } else {
+              newItems[ing.itemId] -= ing.quantity;
+              if (newItems[ing.itemId] <= 0) delete newItems[ing.itemId];
+            }
+          }
+          // Add
+          newItems[recipe.id] = (newItems[recipe.id] || 0) + recipe.outputQuantity;
+          // Update lastCraft
+          newJobs[i] = { ...job, lastCraft: now };
           changed = true;
         }
       }
 
-      return changed ? newState : state;
+      if (!changed) return state;
+      return { ...state, ingots: newIngots, items: newItems, automationJobs: newJobs };
     }
 
     case 'TICK_SMELTING': {
       const now = Date.now();
-      let changed = false;
-      let newState = state;
-      for (let i = state.smeltingJobs.length - 1; i >= 0; i--) {
+      const finishedIndices = [];
+      for (let i = 0; i < state.smeltingJobs.length; i++) {
         const job = state.smeltingJobs[i];
         if (now - job.startTime >= job.duration) {
-          newState = gameReducer(newState, { type: 'COMPLETE_SMELT', jobIndex: i });
-          changed = true;
+          finishedIndices.push(i);
         }
       }
-      return changed ? newState : state;
+
+      if (finishedIndices.length === 0) return state;
+
+      const newIngots = { ...state.ingots };
+      const newActiveJobs = state.smeltingJobs.filter((_, i) => !finishedIndices.includes(i));
+      const newQueuedJobs = [...state.smeltingQueue];
+
+      // Process yields for all finished jobs
+      for (const idx of finishedIndices) {
+        const job = state.smeltingJobs[idx];
+        const ore = ORE_MAP[job.oreId];
+        if (ore) {
+          let yieldAmount = ore.smeltYield;
+          if (job.refined) yieldAmount = Math.ceil(yieldAmount * ore.refineMultiplier);
+          newIngots[job.oreId] = (newIngots[job.oreId] || 0) + yieldAmount;
+        }
+      }
+
+      // Refill active jobs from queue
+      const foundry = getCurrentFoundry(state);
+      while (newActiveJobs.length < foundry.slots && newQueuedJobs.length > 0) {
+        const nextJob = newQueuedJobs[0];
+        const qty = nextJob.quantity || 1;
+        newActiveJobs.push({ ...nextJob, startTime: now, quantity: undefined });
+        if (qty > 1) {
+          nextJob.quantity = qty - 1;
+        } else {
+          newQueuedJobs.shift();
+        }
+      }
+
+      return { ...state, ingots: newIngots, smeltingJobs: newActiveJobs, smeltingQueue: newQueuedJobs };
     }
 
     // ─── Garden Actions ─────────────────────────────────────────────────────
@@ -1280,7 +1338,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setSaveStatus('saving');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setSaveStatus('idle'); return; }
-      const { lastDrop, smeltingJobs, lastSpecialDrop, ...saveable } = gameState;
+      const { lastDrop, lastSpecialDrop, ...saveable } = gameState;
       const { error } = await supabase.from('profiles').update({
         game_state: saveable as any,
         total_mined: gameState.totalMined,
@@ -1308,7 +1366,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (!pendingSaveRef.current) return;
       
       const stateToSave = pendingSaveRef.current;
-      const { lastDrop, smeltingJobs, lastSpecialDrop, ...toSave } = stateToSave;
+      const { lastDrop, lastSpecialDrop, ...toSave } = stateToSave;
       const serialized = JSON.stringify(toSave);
       
       if (serialized !== lastSavedRef.current) {
@@ -1317,6 +1375,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }, 15000);
     return () => clearInterval(interval);
+  }, [saveToSupabase]);
+
+  // Save on tab close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (!pendingSaveRef.current) return;
+      const stateToSave = pendingSaveRef.current;
+      const { lastDrop, lastSpecialDrop, ...toSave } = stateToSave;
+      const serialized = JSON.stringify(toSave);
+      
+      if (serialized !== lastSavedRef.current) {
+        // We use fetch with keepalive if possible, or just fire and forget
+        // Standard supabase update usually works in beforeunload if it's fast
+        saveToSupabase(stateToSave);
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [saveToSupabase]);
 
   // Tick smelting
