@@ -12,6 +12,7 @@ import {
 } from '@/data/garden';
 import { playSound } from '@/lib/audio';
 import { useEffect } from 'react';
+import { Trash2, Ban, ShieldCheck } from 'lucide-react';
 
 export function GardenPanel() {
   const { state, dispatch } = useGame();
@@ -141,7 +142,7 @@ export function GardenPanel() {
                       onClick={() => { 
                         if (confirm(`Trash ${qty}x ${plant!.name}?`)) {
                           dispatch({ type: 'TRASH_SEED', plantId: plant!.id }); 
-                          playSound('buy');
+                          playSound('success');
                         }
                       }}
                       className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
