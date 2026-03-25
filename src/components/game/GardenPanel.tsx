@@ -102,17 +102,57 @@ export function GardenPanel() {
 
       {/* Seeds inventory */}
       {seedEntries.length > 0 && (
-        <div className="space-y-1">
-          <span className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Your Seeds</span>
-          <div className="flex gap-1 flex-wrap">
-            {seedEntries.map(({ plant, qty }) => (
-              <span
-                key={plant!.id}
-                className={`font-mono-game text-[9px] px-2 py-1 border rounded-sm ${PLANT_RARITY_BORDER[plant!.rarity]} ${PLANT_RARITY_COLORS[plant!.rarity]}`}
-              >
-                {plant!.emoji} {plant!.name} ×{qty}
-              </span>
-            ))}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Seed Storage</span>
+            <span className="font-mono-game text-[8px] text-muted-foreground/40 uppercase">Manage Surplus</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {seedEntries.map(({ plant, qty }) => {
+              const isAutoDelete = state.autoDeleteSeeds?.includes(plant!.id);
+              return (
+                <div
+                  key={plant!.id}
+                  className={`flex items-center justify-between p-2 border rounded-sm bg-card/40 hover:bg-card/60 transition-all ${PLANT_RARITY_BORDER[plant!.rarity]}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">{plant!.emoji}</span>
+                    <div className="flex flex-col">
+                      <span className={`font-mono-game text-[10px] uppercase ${PLANT_RARITY_COLORS[plant!.rarity]}`}>
+                        {plant!.name}
+                      </span>
+                      <span className="font-mono-game text-[9px] text-muted-foreground">Qty: {qty}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { dispatch({ type: 'TOGGLE_AUTO_DELETE_SEED', plantId: plant!.id }); playSound('click'); }}
+                      className={`p-1.5 rounded transition-colors ${
+                        isAutoDelete 
+                          ? 'text-destructive bg-destructive/10 border border-destructive/20' 
+                          : 'text-muted-foreground hover:text-foreground border border-transparent'
+                      }`}
+                      title={isAutoDelete ? "Auto-delete active" : "Auto-delete inactive"}
+                    >
+                      {isAutoDelete ? <Ban size={12} /> : <ShieldCheck size={12} />}
+                    </button>
+                    <button
+                      onClick={() => { 
+                        if (confirm(`Trash ${qty}x ${plant!.name}?`)) {
+                          dispatch({ type: 'TRASH_SEED', plantId: plant!.id }); 
+                          playSound('buy');
+                        }
+                      }}
+                      className="p-1.5 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Trash all"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

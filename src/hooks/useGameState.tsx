@@ -111,6 +111,7 @@ export interface GameState {
     showBackground: boolean;
   };
   pinnedTabs: string[];
+  autoDeleteSeeds: string[];
 }
 
 const initialState: GameState = {
@@ -146,6 +147,7 @@ const initialState: GameState = {
     showBackground: true,
   },
   pinnedTabs: ['mine', 'inventory', 'upgrades'],
+  autoDeleteSeeds: [],
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -197,6 +199,8 @@ type Action =
   | { type: 'UPDATE_SETTINGS'; settings: Partial<GameState['settings']> }
   | { type: 'TOGGLE_PIN_TAB'; tabId: string }
   | { type: 'RECEIVE_PURCHASE'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; totalCost: number }
+  | { type: 'TRASH_SEED'; plantId: string; quantity?: number }
+  | { type: 'TOGGLE_AUTO_DELETE_SEED'; plantId: string }
   | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
 
 export function getMiningSpeed(point: MiningPoint): number {
@@ -259,6 +263,30 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         : [...pinned, tabId];
       return { ...state, pinnedTabs: newPinned };
     }
+    case 'TRASH_SEED': {
+      const { plantId, quantity } = action as { type: 'TRASH_SEED'; plantId: string; quantity?: number };
+      const currentQty = state.seeds[plantId] || 0;
+      const amountToRemove = quantity || currentQty;
+      
+      if (amountToRemove <= 0) return state;
+      
+      const newSeeds = { ...state.seeds };
+      newSeeds[plantId] = Math.max(0, currentQty - amountToRemove);
+      if (newSeeds[plantId] <= 0) delete newSeeds[plantId];
+      
+      return { ...state, seeds: newSeeds };
+    }
+
+    case 'TOGGLE_AUTO_DELETE_SEED': {
+      const { plantId } = action as { type: 'TOGGLE_AUTO_DELETE_SEED'; plantId: string };
+      const current = state.autoDeleteSeeds || [];
+      const newAutoDelete = current.includes(plantId)
+        ? current.filter(id => id !== plantId)
+        : [...current, plantId];
+      
+      return { ...state, autoDeleteSeeds: newAutoDelete };
+    }
+
     case 'GIVE_ITEM': {
       const { itemId, quantity } = action as { type: 'GIVE_ITEM'; itemId: string; quantity: number };
       const ore = ORE_MAP[itemId];
@@ -892,7 +920,9 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       if (newItems['seed_pack'] <= 0) delete newItems['seed_pack'];
 
       const newSeeds = { ...state.seeds };
-      newSeeds[plant.id] = (newSeeds[plant.id] || 0) + 1;
+      if (!state.autoDeleteSeeds?.includes(plant.id)) {
+        newSeeds[plant.id] = (newSeeds[plant.id] || 0) + 1;
+      }
 
       return { ...state, items: newItems, seeds: newSeeds };
     }
@@ -1018,7 +1048,9 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       const seedReturn = Math.floor(plant.seedReturnBase * multiplier);
 
       const newSeeds = { ...state.seeds };
-      newSeeds[plot.plantId] = (newSeeds[plot.plantId] || 0) + seedReturn;
+      if (plot.plantId && !state.autoDeleteSeeds?.includes(plot.plantId)) {
+        newSeeds[plot.plantId] = (newSeeds[plot.plantId] || 0) + seedReturn;
+      }
 
       const newGreenhouses = state.greenhouses.map((g, gi) => {
         if (gi !== greenhouseIndex) return g;
