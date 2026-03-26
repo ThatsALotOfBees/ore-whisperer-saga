@@ -14,6 +14,7 @@ import { GardenPanel } from '@/components/game/GardenPanel';
 import { TransmutationPanel } from '@/components/game/TransmutationPanel';
 import { AchievementsPanel } from '@/components/game/AchievementsPanel';
 import { RebirthPanel } from '@/components/game/RebirthPanel';
+import { RefineryPanel } from '@/components/game/RefineryPanel';
 import { SidebarNav } from '@/components/game/SidebarNav';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
@@ -23,7 +24,7 @@ import { SettingsButton } from '@/components/game/SettingsButton';
 import { Button } from '@/components/ui/button';
 import LightPillar from '@/components/ui/LightPillar';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'refinery' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -48,7 +49,7 @@ function GameContent() {
   );
 }
 
-const CURRENT_VERSION = 'v0.691.1';
+const CURRENT_VERSION = 'v0.7';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
@@ -57,19 +58,20 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
       animate={{ opacity: 1, scale: 1 }}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm"
     >
-      <div className="max-w-md w-full bg-card border border-accent p-6 space-y-4 shadow-2xl">
+      <div className="max-w-md w-full bg-card border border-cyan-500 p-6 space-y-4 shadow-2xl shadow-cyan-500/20">
         <div className="space-y-1">
-          <h2 className="font-mono-game text-sm text-accent tracking-widest uppercase">Major Update: Blood Arsenal</h2>
+          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Major Update: The Refinery</h2>
           <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
         </div>
         
         <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
-          <p>The ore remembers. Give it blood, and it will remember more. The <span className="text-pink-400">🩸 Blood Arsenal Update</span> introduces ore transmutation and corruption mechanics.</p>
+          <p>The machine hums. Feed it ore. It will decide the rest. The <span className="text-cyan-400">🏭 Refinery Rework</span> introduces passive ore processing with heat mechanics and deep upgrading.</p>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li>New Machine: <span className="text-pink-300">Sanguinite Transmutation Table</span></li>
-            <li>Ore Mutations: 10 new modifiers across Positive, Corrupted, and Sanguine types</li>
-            <li>Risk vs Reward: Boost outcomes with Veinite, influence rarity with Biomass</li>
-            <li>Sell and trade potent end-game ingots with high value multipliers</li>
+            <li>New Building: <span className="text-cyan-300">Ore Refinery</span> — processes ores into Refined, Polished, or Perfect forms</li>
+            <li><span className="text-sky-300">20 Upgrades × 5 Tiers</span> across Speed, Value, Risk, and Mutation Synergy</li>
+            <li><span className="text-orange-300">Heat Mechanic</span> — bonus value at medium heat, risk of ore loss at high heat</li>
+            <li><span className="text-purple-300">Idle Scaling</span> — longer sessions boost speed, quality, and batch size</li>
+            <li>Upgrades require <span className="text-emerald-300">crafted parts</span> ranked by tier difficulty</li>
           </ul>
         </div>
 
@@ -91,6 +93,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   const hasMachines = state.unlockedMachines.length > 0;
   const hasGarden = state.greenhouses.length > 0 || (state.items?.greenhouse || 0) > 0;
   const hasTransmuter = state.unlockedMachines.includes('sanguinite_transmutation_table') || state.transmutationTables.length > 0 || (state.items?.transmutation_table || 0) > 0;
+  const hasRefinery = !!state.refinery || state.unlockedMachines.includes('ore_refinery');
   const hasRebirth = state.rebirthCount > 0 || state.unlockedMachines.includes('quantum_lab');
 
   const showUpdate = state.lastViewedVersion !== CURRENT_VERSION;
@@ -107,6 +110,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'machines', label: 'Machines', hidden: !hasMachines },
     { key: 'garden', label: 'Garden', hidden: !hasGarden },
     { key: 'transmute', label: '🩸 Transmute', hidden: !hasTransmuter },
+    { key: 'refinery', label: '🏭 Refinery', hidden: !hasRefinery },
     { key: 'market', label: 'Market' },
     { key: 'upgrades', label: 'Upgrades' },
     { key: 'achievements', label: 'Trophies' },
@@ -198,6 +202,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
               {tab === 'machines' && <MachinesPanel />}
               {tab === 'garden' && <GardenPanel />}
               {tab === 'transmute' && <TransmutationPanel />}
+              {tab === 'refinery' && <RefineryPanel />}
               {tab === 'market' && <Marketplace />}
               {tab === 'upgrades' && <UpgradeShop />}
               {tab === 'achievements' && <AchievementsPanel />}

@@ -18,6 +18,12 @@ import {
   getTransmutationDuration,
 } from '@/data/mutations';
 import { ACHIEVEMENTS } from '@/data/achievements';
+import {
+  REFINERY_UPGRADE_MAP, REFINERY_TICK_MS, HEAT_DECAY_PER_SECOND, HEAT_MAX,
+  getProcessTime, getBatchSize, rollOutputType, getOutputValueMultiplier,
+  getHeatPerCycle, getHeatPenalty, getCriticalMeltMultiplier,
+  type RefineryOutputType,
+} from '@/data/refinery';
 
 export interface SmeltingJob {
   oreId: string;
@@ -84,6 +90,28 @@ export interface Greenhouse {
   harvestLevel: number; // upgrade level
 }
 
+// ─── Refinery Types ──────────────────────────────────────────────────────────
+export interface RefineryOutput {
+  id: string;
+  oreId: string;
+  outputType: RefineryOutputType; // 'refined' | 'polished' | 'perfect'
+  quantity: number;
+  valueMultiplier: number;
+  collected: boolean;
+}
+
+export interface Refinery {
+  upgrades: Record<string, number>; // upgradeId -> tier level (0 = not purchased)
+  heat: number; // 0-100
+  inputOreId: string | null; // currently set ore to process
+  inputQuantity: number; // how many ores in queue
+  processing: boolean;
+  processStartTime: number;
+  processDuration: number;
+  sessionStartTime: number; // when the refinery session began (for idle scaling)
+  totalProcessed: number; // lifetime ores processed
+}
+
 export interface GameState {
   currency: number;
   ores: Record<string, number>;
@@ -107,6 +135,8 @@ export interface GameState {
   lastDrop: { ore: Ore; quantity: number } | null;
   lastSpecialDrop: { id: string; name: string; rarity: string; timestamp: number } | null;
   greenhouses: Greenhouse[];
+  refinery: Refinery | null;
+  refineryOutputs: RefineryOutput[];
   settings: {
     showBackground: boolean;
   };
@@ -143,6 +173,8 @@ const initialState: GameState = {
   greenhouses: [],
   transmutationTables: [],
   mutatedOres: [],
+  refinery: null,
+  refineryOutputs: [],
   settings: {
     showBackground: true,
   },
@@ -201,7 +233,14 @@ type Action =
   | { type: 'RECEIVE_PURCHASE'; itemId: string; itemType: 'ore' | 'refined' | 'ingot' | 'item'; quantity: number; totalCost: number }
   | { type: 'TRASH_SEED'; plantId: string; quantity?: number }
   | { type: 'TOGGLE_AUTO_DELETE_SEED'; plantId: string }
-  | { type: 'GIVE_ITEM'; itemId: string; quantity: number };
+  | { type: 'GIVE_ITEM'; itemId: string; quantity: number }
+  // Refinery actions
+  | { type: 'INSERT_ORE_REFINERY'; oreId: string; quantity: number }
+  | { type: 'TICK_REFINERY' }
+  | { type: 'COLLECT_REFINERY_OUTPUT'; outputId: string }
+  | { type: 'COLLECT_ALL_REFINERY_OUTPUTS' }
+  | { type: 'UPGRADE_REFINERY'; upgradeId: string }
+  | { type: 'RESET_REFINERY_HEAT' };
 
 export function getMiningSpeed(point: MiningPoint): number {
   const level = point.upgrades.drill_speed || 0;
@@ -317,6 +356,22 @@ function gameReducerBase(state: GameState, action: Action): GameState {
           });
         }
         newState.transmutationTables = newTables;
+      }
+      // Handle refinery specially
+      else if (itemId === 'ore_refinery' && !newState.refinery) {
+        newState.refinery = {
+          upgrades: {},
+          heat: 0,
+          inputOreId: null,
+          inputQuantity: 0,
+          processing: false,
+          processStartTime: 0,
+          processDuration: 0,
+          sessionStartTime: Date.now(),
+          totalProcessed: 0,
+        };
+        const newMachines = [...new Set([...newState.unlockedMachines, 'ore_refinery'])];
+        newState.unlockedMachines = newMachines;
       }
       // Standard item/ore handling
       else {
@@ -731,7 +786,23 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         newGreenhouses = [...newGreenhouses, gh];
       }
 
-      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines, greenhouses: newGreenhouses, transmutationTables: newTransmutationTables };
+      // If refinery, create a new refinery
+      let newRefinery = newState.refinery;
+      if (recipe.id === 'ore_refinery' && !newRefinery) {
+        newRefinery = {
+          upgrades: {},
+          heat: 0,
+          inputOreId: null,
+          inputQuantity: 0,
+          processing: false,
+          processStartTime: 0,
+          processDuration: 0,
+          sessionStartTime: Date.now(),
+          totalProcessed: 0,
+        };
+      }
+
+      return { ...newState, ingots: newIngots, items: newItems, unlockedMachines: newMachines, greenhouses: newGreenhouses, transmutationTables: newTransmutationTables, refinery: newRefinery ?? newState.refinery };
     }
 
     case 'TOGGLE_AUTO_MINER': {
@@ -1359,6 +1430,274 @@ function gameReducerBase(state: GameState, action: Action): GameState {
       };
     }
 
+    // ─── Refinery Actions ─────────────────────────────────────────────────────
+    case 'INSERT_ORE_REFINERY': {
+      if (!state.refinery) return state;
+      const { oreId, quantity } = action as { type: 'INSERT_ORE_REFINERY'; oreId: string; quantity: number };
+      const available = state.ores[oreId] || 0;
+      const toInsert = Math.min(quantity, available);
+      if (toInsert <= 0) return state;
+
+      const newOres = { ...state.ores };
+      newOres[oreId] = available - toInsert;
+      if (newOres[oreId] <= 0) delete newOres[oreId];
+
+      const ref = { ...state.refinery };
+      if (ref.inputOreId === oreId) {
+        ref.inputQuantity += toInsert;
+      } else {
+        // Return any existing input ores
+        if (ref.inputOreId && ref.inputQuantity > 0 && !ref.processing) {
+          newOres[ref.inputOreId] = (newOres[ref.inputOreId] || 0) + ref.inputQuantity;
+        }
+        ref.inputOreId = oreId;
+        ref.inputQuantity = toInsert;
+      }
+
+      // Start processing if not already
+      if (!ref.processing && ref.inputQuantity > 0) {
+        const sessionMs = Date.now() - ref.sessionStartTime;
+        ref.processing = true;
+        ref.processStartTime = Date.now();
+        ref.processDuration = getProcessTime(ref.upgrades, sessionMs, state.mutatedOres.length);
+      }
+
+      return { ...state, ores: newOres, refinery: ref };
+    }
+
+    case 'TICK_REFINERY': {
+      if (!state.refinery || !state.refinery.processing) {
+        // Passive heat decay even when not processing
+        if (state.refinery && state.refinery.heat > 0) {
+          const ref = { ...state.refinery };
+          ref.heat = Math.max(0, ref.heat - HEAT_DECAY_PER_SECOND);
+          return { ...state, refinery: ref };
+        }
+        return state;
+      }
+
+      const now = Date.now();
+      const ref = { ...state.refinery };
+      const elapsed = now - ref.processStartTime;
+
+      // Check for instant completion (Hypercycle Core)
+      const hcLevel = ref.upgrades['hypercycle_core'] || 0;
+      const isInstant = hcLevel > 0 && Math.random() < REFINERY_UPGRADE_MAP['hypercycle_core'].tiers[hcLevel - 1].effect;
+
+      if (elapsed < ref.processDuration && !isInstant) {
+        // Still processing, just decay heat
+        ref.heat = Math.max(0, ref.heat - HEAT_DECAY_PER_SECOND * 0.5);
+        return { ...state, refinery: ref };
+      }
+
+      // ─── Processing complete ───
+      const sessionMs = now - ref.sessionStartTime;
+      const batchSize = Math.min(getBatchSize(ref.upgrades, sessionMs), ref.inputQuantity);
+      const ore = ref.inputOreId ? ORE_MAP[ref.inputOreId] : null;
+
+      if (!ore || batchSize <= 0) {
+        ref.processing = false;
+        return { ...state, refinery: ref };
+      }
+
+      // Generate heat
+      ref.heat = Math.min(HEAT_MAX, ref.heat + getHeatPerCycle(ref.upgrades));
+
+      // Check high heat penalty
+      const penalty = getHeatPenalty(ref.heat);
+      let newOutputs = [...state.refineryOutputs];
+      let newOres = { ...state.ores };
+      let bonusCurrency = 0;
+
+      // Critical Melt check
+      const cmLevel = ref.upgrades['critical_melt'] || 0;
+      const cmChance = cmLevel > 0 ? REFINERY_UPGRADE_MAP['critical_melt'].tiers[cmLevel - 1].effect : 0;
+      const cmMultiplier = getCriticalMeltMultiplier(cmLevel);
+
+      // Combustion Loop recovery
+      const clLevel = ref.upgrades['combustion_loop'] || 0;
+      const clRecovery = clLevel > 0 ? REFINERY_UPGRADE_MAP['combustion_loop'].tiers[clLevel - 1].effect : 0;
+
+      // Refined Echo duplicate
+      const reLevel = ref.upgrades['refined_echo'] || 0;
+      const reDupeChance = reLevel > 0 ? REFINERY_UPGRADE_MAP['refined_echo'].tiers[reLevel - 1].effect : 0;
+
+      // Living Conversion self-replication
+      const lcLevel = ref.upgrades['living_conversion'] || 0;
+      const lcChance = lcLevel > 0 ? REFINERY_UPGRADE_MAP['living_conversion'].tiers[lcLevel - 1].effect : 0;
+
+      // Hemophage Recycling biomass generation
+      const hrLevel = ref.upgrades['hemophage_recycling'] || 0;
+      const hrChance = hrLevel > 0 ? REFINERY_UPGRADE_MAP['hemophage_recycling'].tiers[hrLevel - 1].effect : 0;
+
+      let newItems = { ...state.items };
+
+      for (let i = 0; i < batchSize; i++) {
+        // Critical melt: destroy ore for big payout
+        if (Math.random() < cmChance) {
+          bonusCurrency += Math.floor(ore.value * cmMultiplier);
+          // Combustion loop: chance to recover
+          if (Math.random() < clRecovery) {
+            newOres[ore.id] = (newOres[ore.id] || 0) + 1;
+          }
+          continue;
+        }
+
+        // High heat penalty: ore destroyed
+        if (penalty.oreDestroyed && Math.random() < 0.3) {
+          if (Math.random() < clRecovery) {
+            newOres[ore.id] = (newOres[ore.id] || 0) + 1;
+          }
+          continue;
+        }
+
+        // Roll output type
+        const outputType = rollOutputType(ref.upgrades, sessionMs, ref.heat);
+        let valueMult = getOutputValueMultiplier(outputType, ref.upgrades, ref.heat);
+        valueMult *= penalty.valuePenalty;
+
+        let qty = 1;
+        // Refined Echo duplicate
+        if (Math.random() < reDupeChance) qty = 2;
+
+        const output: RefineryOutput = {
+          id: `ro_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          oreId: ore.id,
+          outputType,
+          quantity: qty,
+          valueMultiplier: valueMult,
+          collected: false,
+        };
+        newOutputs.push(output);
+
+        // Hemophage: generate biomass item
+        if (Math.random() < hrChance) {
+          newItems['biomass'] = (newItems['biomass'] || 0) + 1;
+        }
+      }
+
+      // Living Conversion: self-replication
+      if (Math.random() < lcChance) {
+        newOres[ore.id] = (newOres[ore.id] || 0) + 1;
+      }
+
+      // Update refinery state
+      ref.inputQuantity -= batchSize;
+      ref.totalProcessed += batchSize;
+
+      if (ref.inputQuantity > 0) {
+        // Continue processing
+        ref.processStartTime = now;
+        ref.processDuration = getProcessTime(ref.upgrades, sessionMs, state.mutatedOres.length);
+      } else {
+        ref.processing = false;
+        ref.inputOreId = null;
+      }
+
+      return {
+        ...state,
+        refinery: ref,
+        refineryOutputs: newOutputs,
+        ores: newOres,
+        items: newItems,
+        currency: state.currency + bonusCurrency,
+      };
+    }
+
+    case 'COLLECT_REFINERY_OUTPUT': {
+      const { outputId } = action as { type: 'COLLECT_REFINERY_OUTPUT'; outputId: string };
+      const output = state.refineryOutputs.find(o => o.id === outputId);
+      if (!output || output.collected) return state;
+
+      const ore = ORE_MAP[output.oreId];
+      if (!ore) return state;
+
+      const value = Math.floor(ore.value * output.valueMultiplier * output.quantity);
+
+      return {
+        ...state,
+        currency: state.currency + value,
+        refineryOutputs: state.refineryOutputs.filter(o => o.id !== outputId),
+      };
+    }
+
+    case 'COLLECT_ALL_REFINERY_OUTPUTS': {
+      let totalValue = 0;
+      for (const output of state.refineryOutputs) {
+        const ore = ORE_MAP[output.oreId];
+        if (ore) {
+          totalValue += Math.floor(ore.value * output.valueMultiplier * output.quantity);
+        }
+      }
+
+      return {
+        ...state,
+        currency: state.currency + totalValue,
+        refineryOutputs: [],
+      };
+    }
+
+    case 'UPGRADE_REFINERY': {
+      if (!state.refinery) return state;
+      const { upgradeId } = action as { type: 'UPGRADE_REFINERY'; upgradeId: string };
+      const upgradeDef = REFINERY_UPGRADE_MAP[upgradeId];
+      if (!upgradeDef) return state;
+
+      const currentLevel = state.refinery.upgrades[upgradeId] || 0;
+      if (currentLevel >= upgradeDef.maxTier) return state;
+
+      const tier = upgradeDef.tiers[currentLevel];
+      if (!tier) return state;
+
+      // Check costs
+      let newState = { ...state };
+      let newCurrency = state.currency;
+      const newItems = { ...state.items };
+      const newIngots = { ...state.ingots };
+
+      for (const cost of tier.cost) {
+        if (cost.type === 'currency') {
+          if (newCurrency < cost.quantity) return state;
+        } else if (cost.type === 'item') {
+          if ((newItems[cost.itemId] || 0) < cost.quantity) return state;
+        } else if (cost.type === 'ingot') {
+          if ((newIngots[cost.itemId] || 0) < cost.quantity) return state;
+        }
+      }
+
+      // Deduct costs
+      for (const cost of tier.cost) {
+        if (cost.type === 'currency') {
+          newCurrency -= cost.quantity;
+        } else if (cost.type === 'item') {
+          newItems[cost.itemId] = (newItems[cost.itemId] || 0) - cost.quantity;
+          if (newItems[cost.itemId] <= 0) delete newItems[cost.itemId];
+        } else if (cost.type === 'ingot') {
+          newIngots[cost.itemId] = (newIngots[cost.itemId] || 0) - cost.quantity;
+          if (newIngots[cost.itemId] <= 0) delete newIngots[cost.itemId];
+        }
+      }
+
+      const newRef = { ...state.refinery };
+      newRef.upgrades = { ...newRef.upgrades, [upgradeId]: currentLevel + 1 };
+
+      return {
+        ...newState,
+        currency: newCurrency,
+        items: newItems,
+        ingots: newIngots,
+        refinery: newRef,
+      };
+    }
+
+    case 'RESET_REFINERY_HEAT': {
+      if (!state.refinery) return state;
+      return {
+        ...state,
+        refinery: { ...state.refinery, heat: Math.max(0, state.refinery.heat - 30) },
+      };
+    }
+
     default:
       return state;
   }
@@ -1445,6 +1784,13 @@ function migrateState(saved: any): GameState {
   if (!state.smeltingQueue) state.smeltingQueue = [];
   if (!state.transmutationTables) state.transmutationTables = [];
   if (!state.mutatedOres) state.mutatedOres = [];
+  if (state.refinery === undefined) state.refinery = null;
+  if (!state.refineryOutputs) state.refineryOutputs = [];
+  // Reset session start time for refinery on load
+  if (state.refinery) {
+    state.refinery.sessionStartTime = Date.now();
+    state.refinery.processing = false; // stop stale processing
+  }
 
   return state;
 }
@@ -1596,6 +1942,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => dispatch({ type: 'TICK_TRANSMUTATION' }), 1000);
     return () => clearInterval(interval);
   }, [state.transmutationTables.length]);
+
+  // Refinery tick
+  useEffect(() => {
+    if (!state.refinery) return;
+    const interval = setInterval(() => dispatch({ type: 'TICK_REFINERY' }), REFINERY_TICK_MS);
+    return () => clearInterval(interval);
+  }, [!!state.refinery]);
 
   const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
   const miningSpeed = getMiningSpeed(activePoint);

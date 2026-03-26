@@ -435,6 +435,14 @@ const machines: CraftingRecipe[] = [
     { itemId: 'veinite', type: 'ingot', quantity: 10 },
     { itemId: 'veinite_core', type: 'item', quantity: 1 },
   ], outputQuantity: 1, description: '🩸 Mutate ore ingots into enhanced or corrupted variants. Unlocks the Transmute tab.' },
+
+  { id: 'ore_refinery', name: 'Ore Refinery', category: 'machine', ingredients: [
+    { itemId: 'machine_chassis', type: 'item', quantity: 1 },
+    { itemId: 'thermal_regulator', type: 'item', quantity: 2 },
+    { itemId: 'gear_assembly', type: 'item', quantity: 3 },
+    { itemId: 'energy_channel', type: 'item', quantity: 2 },
+    { itemId: 'pressure_core', type: 'item', quantity: 1 },
+  ], outputQuantity: 1, description: '🏭 Passively processes ores into Refined, Polished, or Perfect variants. Unlocks the Refinery tab.' },
 ];
 
 // ─── Ballistic Components (10) ───────────────────────────────────────────────

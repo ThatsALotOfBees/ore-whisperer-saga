@@ -7,7 +7,6 @@ import { ItemBrowser, type BrowsableItem } from './ItemBrowser';
 export function Foundry() {
   const { state, dispatch, foundry } = useGame();
   const [selectedOre, setSelectedOre] = useState<string | null>(null);
-  const [useRefined, setUseRefined] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -21,48 +20,28 @@ export function Foundry() {
     const ore = ORE_MAP[selectedOre];
     if (!ore || state.foundryTier < ore.minSmeltTier) return;
 
-    const source = useRefined ? state.refinedOres : state.ores;
-    const available = source[selectedOre] || 0;
+    const available = state.ores[selectedOre] || 0;
     if (available <= 0) return;
 
-    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined, quantity: available });
+    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: false, quantity: available });
   };
 
   const handleSmeltOne = () => {
     if (!selectedOre) return;
-    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: useRefined, quantity: 1 });
+    dispatch({ type: 'START_SMELT', oreId: selectedOre, refined: false, quantity: 1 });
   };
 
   const handleCancelJob = (index: number, isQueue: boolean) => {
     dispatch({ type: 'CANCEL_SMELTIC_JOB', jobIndex: index, isQueue });
   };
 
-  const handleRefine = (item: BrowsableItem) => {
-    dispatch({ type: 'REFINE_ORE', oreId: item.id, quantity: 1 });
-  };
+
 
   const nextTier = FOUNDRY_TIERS[state.foundryTier];
 
-  // Refinery items
-  const refineItems: BrowsableItem[] = useMemo(() => {
-    return Object.entries(state.ores)
-      .filter(([id, q]) => q > 0 && ORE_MAP[id])
-      .map(([id, qty]) => {
-        const ore = ORE_MAP[id];
-        return {
-          id,
-          name: ore.name,
-          rarity: ore.rarity,
-          quantity: qty,
-          extra: `${ore.refineCost}¤`,
-        };
-      });
-  }, [state.ores]);
-
   // Smelt ore selection items
   const smeltItems: BrowsableItem[] = useMemo(() => {
-    const source = useRefined ? state.refinedOres : state.ores;
-    return Object.entries(source)
+    return Object.entries(state.ores)
       .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
       .map(([id, qty]) => {
         const ore = ORE_MAP[id];
@@ -76,7 +55,7 @@ export function Foundry() {
           disabledReason: !canSmelt ? `T${ore.minSmeltTier}` : undefined,
         };
       });
-  }, [useRefined, state.ores, state.refinedOres, state.foundryTier]);
+  }, [state.ores, state.foundryTier]);
 
   return (
     <div className="p-4 space-y-6">
@@ -155,43 +134,9 @@ export function Foundry() {
         </div>
       )}
 
-      {/* Refinery Section */}
-      <div className="space-y-2">
-        <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">
-          Refine Ores (costs currency, increases smelt yield)
-        </p>
-        <ItemBrowser
-          items={refineItems}
-          onAction={handleRefine}
-          actionLabel="Refine"
-          actionDisabled={item => {
-            const ore = ORE_MAP[item.id];
-            return ore ? state.currency < ore.refineCost : true;
-          }}
-          placeholder="Search ores to refine..."
-          emptyMessage="No ores to refine"
-          showRarityFilter={false}
-          maxHeight="25vh"
-        />
-      </div>
-
       {/* Smelt Controls */}
       <div className="space-y-2">
-        <div className="flex gap-2 items-center">
-          <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground mr-2">Smelt</p>
-          <button
-            onClick={() => setUseRefined(false)}
-            className={`font-mono-game text-[10px] uppercase px-2 py-1 border ${!useRefined ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}
-          >
-            Raw
-          </button>
-          <button
-            onClick={() => setUseRefined(true)}
-            className={`font-mono-game text-[10px] uppercase px-2 py-1 border ${useRefined ? 'border-primary text-primary bg-primary/10' : 'border-border text-muted-foreground'}`}
-          >
-            Refined
-          </button>
-        </div>
+        <p className="font-mono-game text-[10px] uppercase tracking-wider text-muted-foreground">Smelt Ores</p>
 
         <ItemBrowser
           items={smeltItems}
