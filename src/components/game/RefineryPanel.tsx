@@ -194,11 +194,11 @@ export function RefineryPanel() {
 
   const hasRefinery = !!state.refinery;
 
-  // Available ores to insert
+  // Available ores to insert — only actual ores, not items
   const availableOres = useMemo(() =>
     Object.entries(state.ores)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => ({ id, name: ORE_MAP[id]?.name || id, qty, tier: ORE_MAP[id]?.tier || 0 }))
+      .filter(([id, qty]) => qty > 0 && ORE_MAP[id])
+      .map(([id, qty]) => ({ id, name: ORE_MAP[id].name, qty, tier: ORE_MAP[id].tier }))
       .sort((a, b) => b.tier - a.tier),
     [state.ores]
   );
