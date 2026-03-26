@@ -121,6 +121,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
   return (
     <div className="min-h-screen flex flex-col">
       <AnimatePresence>
+        {showUpdate && <UpdateNotification onAcknowledge={handleAcknowledge} />}
       </AnimatePresence>
       
       {/* Base Background Layer */}
