@@ -1,4 +1,5 @@
 import { useGame } from '@/hooks/useGameState';
+import { useNavigation } from '@/hooks/useNavigation';
 import { ORE_MAP } from '@/data/ores';
 import { FOUNDRY_TIERS, RECIPE_MAP } from '@/data/recipes';
 import { useState, useEffect, useMemo } from 'react';
@@ -6,8 +7,19 @@ import { ItemBrowser, type BrowsableItem } from './ItemBrowser';
 
 export function Foundry() {
   const { state, dispatch, foundry } = useGame();
+  const { navigateToTab } = useNavigation();
   const [selectedOre, setSelectedOre] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+
+  const handleItemClick = (cost: { itemId: string; type: string; quantity: number }) => {
+    // Only navigate to crafting for 'item' type requirements
+    if (cost.type === 'item') {
+      const recipe = RECIPE_MAP[cost.itemId];
+      if (recipe) {
+        navigateToTab('craft', cost.itemId);
+      }
+    }
+  };
 
   useEffect(() => {
     if (state.smeltingJobs.length === 0) return;
@@ -182,11 +194,23 @@ export function Foundry() {
           <p className="font-mono-game text-xs text-accent">Upgrade to {nextTier.name}</p>
           <p className="text-xs text-muted-foreground">{nextTier.description}</p>
           <div className="text-[10px] font-mono-game text-muted-foreground space-y-0.5">
-            {nextTier.cost.map((c, i) => (
-              <p key={i}>
-                {c.type === 'currency' ? `${c.quantity.toLocaleString()}¤` : c.type === 'ingot' ? `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots` : `${c.quantity}x ${RECIPE_MAP[c.itemId]?.name || c.itemId}`}
-              </p>
-            ))}
+            {nextTier.cost.map((c, i) => {
+              const isClickable = c.type === 'item' && RECIPE_MAP[c.itemId];
+              const itemName = c.type === 'currency' ? `${c.quantity.toLocaleString()}¤` : 
+                              c.type === 'ingot' ? `${c.quantity}x ${ORE_MAP[c.itemId]?.name || c.itemId} ingots` : 
+                              `${c.quantity}x ${RECIPE_MAP[c.itemId]?.name || c.itemId}`;
+              
+              return (
+                <p 
+                  key={i}
+                  onClick={() => isClickable && handleItemClick(c)}
+                  className={isClickable ? 'cursor-pointer hover:text-foreground transition-colors' : ''}
+                >
+                  {itemName}
+                  {isClickable && <span className="ml-1 text-[6px] opacity-60">🔗</span>}
+                </p>
+              );
+            })}
           </div>
           <button
             onClick={() => dispatch({ type: 'UPGRADE_FOUNDRY' })}
