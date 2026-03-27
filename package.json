@@ -1,8 +1,16 @@
 {
-  "name": "vite_react_shadcn_ts",
-  "private": true,
-  "version": "0.0.0",
+  "name": "ore-whisperer-saga",
+  "version": "0.76.0",
+  "description": "A sophisticated incremental mining game with deep progression systems",
   "type": "module",
+  "homepage": "https://github.com/ThatsALotOfBees/ore-whisperer-saga",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ThatsALotOfBees/ore-whisperer-saga.git"
+  },
+  "keywords": ["game", "mining", "incremental", "idle", "react", "typescript", "supabase"],
+  "author": "ThatsALotOfBees",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +18,15 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "start": "npm run dev",
+    "serve": "npm run preview",
+    "install:prod": "npm install --production=false",
+    "setup": "npm install && cp .env.example .env",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:8080 && electron .\"",
+    "electron:build": "npm run build && electron-builder",
+    "electron:pack": "npm run build && electron-builder --publish=never",
+    "dist": "npm run build && npm run electron:build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
