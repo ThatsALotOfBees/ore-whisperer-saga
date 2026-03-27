@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GameProvider, useGame } from '@/hooks/useGameState';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { NavigationProvider, useNavigation } from '@/hooks/useNavigation';
 import { MiningStation } from '@/components/game/MiningStation';
 import { Inventory } from '@/components/game/Inventory';
 import { Foundry } from '@/components/game/Foundry';
@@ -44,12 +45,14 @@ function GameContent() {
 
   return (
     <GameProvider>
-      <GameContentInner tab={tab} setTab={setTab} />
+      <NavigationProvider>
+        <GameContentInner tab={tab} setTab={setTab} />
+      </NavigationProvider>
     </GameProvider>
   );
 }
 
-const CURRENT_VERSION = 'v0.7';
+const CURRENT_VERSION = 'v0.75';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
@@ -60,18 +63,17 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
     >
       <div className="max-w-md w-full bg-card border border-cyan-500 p-6 space-y-4 shadow-2xl shadow-cyan-500/20">
         <div className="space-y-1">
-          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Major Update: The Refinery</h2>
+          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Quality Update: v0.75</h2>
           <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
         </div>
         
         <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
-          <p>The machine hums. Feed it ore. It will decide the rest. The <span className="text-cyan-400">🏭 Refinery Rework</span> introduces passive ore processing with heat mechanics and deep upgrading.</p>
+          <p>The upgrade terminal hums with new functionality. <span className="text-cyan-400">🔗 Clickable Upgrade Requirements</span> now let you jump directly to crafting recipes.</p>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li>New Building: <span className="text-cyan-300">Ore Refinery</span> — processes ores into Refined, Polished, or Perfect forms</li>
-            <li><span className="text-sky-300">20 Upgrades × 5 Tiers</span> across Speed, Value, Risk, and Mutation Synergy</li>
-            <li><span className="text-orange-300">Heat Mechanic</span> — bonus value at medium heat, risk of ore loss at high heat</li>
-            <li><span className="text-purple-300">Idle Scaling</span> — longer sessions boost speed, quality, and batch size</li>
-            <li>Upgrades require <span className="text-emerald-300">crafted parts</span> ranked by tier difficulty</li>
+            <li><span className="text-cyan-300">Clickable Items</span> — Craftable upgrade requirements now link to their recipes</li>
+            <li><span className="text-sky-300">Smart Navigation</span> — Auto-filters and searches when navigating to crafting</li>
+            <li><span className="text-purple-300">Visual Indicators</span> — Link icons show clickable requirements</li>
+            <li><span className="text-emerald-300">Enhanced UX</span> — Seamless workflow between upgrades and crafting</li>
           </ul>
         </div>
 
@@ -89,6 +91,21 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
 function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const { user, profile, signOut, isGuest } = useAuth();
   const { state, dispatch } = useGame();
+  const { navigateToTab, currentTab: navigationTab, selectedItem, clearSelectedItem } = useNavigation();
+
+  // Handle navigation from other components
+  useEffect(() => {
+    if (navigationTab && navigationTab !== tab) {
+      setTab(navigationTab);
+    }
+  }, [navigationTab, tab, setTab]);
+
+  // Clear selected item when switching away from craft tab
+  useEffect(() => {
+    if (tab !== 'craft') {
+      clearSelectedItem();
+    }
+  }, [tab, clearSelectedItem]);
 
   const hasMachines = state.unlockedMachines.length > 0;
   const hasGarden = state.greenhouses.length > 0 || (state.items?.greenhouse || 0) > 0;
@@ -199,7 +216,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
               {tab === 'mine' && <MiningStation />}
               {tab === 'inventory' && <Inventory />}
               {tab === 'foundry' && <Foundry />}
-              {tab === 'craft' && <CraftingStation />}
+              {tab === 'craft' && <CraftingStation selectedItem={selectedItem} />}
               {tab === 'machines' && <MachinesPanel />}
               {tab === 'garden' && <GardenPanel />}
               {tab === 'transmute' && <TransmutationPanel />}

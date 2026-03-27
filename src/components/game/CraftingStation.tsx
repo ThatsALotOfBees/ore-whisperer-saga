@@ -1,14 +1,39 @@
 import { useGame } from '@/hooks/useGameState';
+import { useNavigation } from '@/hooks/useNavigation';
 import { CRAFTING_RECIPES, RECIPE_MAP, type CraftingRecipe } from '@/data/recipes';
 import { ORE_MAP, type OreRarity } from '@/data/ores';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 type CatFilter = 'all' | 'component' | 'electronic' | 'machine';
 
-export function CraftingStation() {
+interface CraftingStationProps {
+  selectedItem?: string | null;
+}
+
+export function CraftingStation({ selectedItem }: CraftingStationProps) {
   const { state, dispatch } = useGame();
+  const { clearSelectedItem } = useNavigation();
   const [filter, setFilter] = useState<CatFilter>('all');
   const [search, setSearch] = useState('');
+
+  // If we have a selectedItem, find and highlight the recipe
+  useEffect(() => {
+    if (selectedItem) {
+      const recipe = RECIPE_MAP[selectedItem];
+      if (recipe) {
+        // Set search to the recipe name to highlight it
+        setSearch(recipe.name);
+        // Set filter to the recipe's category
+        if (recipe.category !== 'component' && recipe.category !== 'electronic' && recipe.category !== 'machine') {
+          setFilter('all');
+        } else {
+          setFilter(recipe.category);
+        }
+        // Clear the selected item after a short delay
+        setTimeout(() => clearSelectedItem(), 100);
+      }
+    }
+  }, [selectedItem, clearSelectedItem]);
 
   const filtered = useMemo(() => {
     let recipes = filter === 'all' ? CRAFTING_RECIPES : CRAFTING_RECIPES.filter(r => r.category === filter);

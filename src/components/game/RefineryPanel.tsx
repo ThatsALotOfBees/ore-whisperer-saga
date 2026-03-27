@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGame } from '@/hooks/useGameState';
+import { useNavigation } from '@/hooks/useNavigation';
 import { ORE_MAP, ALL_ORES } from '@/data/ores';
 import {
   ALL_REFINERY_UPGRADES, REFINERY_UPGRADE_MAP,
@@ -63,6 +64,7 @@ function HeatGauge({ heat }: { heat: number }) {
 
 function UpgradeCard({ upgradeId }: { upgradeId: string }) {
   const { state, dispatch } = useGame();
+  const { navigateToTab } = useNavigation();
   const def = REFINERY_UPGRADE_MAP[upgradeId];
   if (!def || !state.refinery) return null;
 
@@ -79,10 +81,20 @@ function UpgradeCard({ upgradeId }: { upgradeId: string }) {
   }) : false;
 
   const getItemName = (itemId: string, type: string): string => {
-    if (type === 'currency') return 'ñ';
+    if (type === 'currency') return '¤';
     if (type === 'ingot') return ORE_MAP[itemId]?.name ? `${ORE_MAP[itemId].name} Ingot` : itemId;
     const recipe = RECIPE_MAP[itemId];
     return recipe?.name || itemId;
+  };
+
+  const handleItemClick = (cost: { itemId: string; type: string; quantity: number }) => {
+    // Only navigate to crafting for 'item' type requirements
+    if (cost.type === 'item') {
+      const recipe = RECIPE_MAP[cost.itemId];
+      if (recipe) {
+        navigateToTab('craft', cost.itemId);
+      }
+    }
   };
 
   return (
@@ -110,20 +122,29 @@ function UpgradeCard({ upgradeId }: { upgradeId: string }) {
             Next: {nextTier.description}
           </p>
           <div className="flex flex-wrap gap-1">
-            {nextTier.cost.map((cost, i) => (
-              <span
-                key={i}
-                className={`font-mono-game text-[7px] px-1.5 py-0.5 border rounded-sm ${
-                  (cost.type === 'currency' ? state.currency >= cost.quantity :
-                   cost.type === 'item' ? (state.items[cost.itemId] || 0) >= cost.quantity :
-                   (state.ingots[cost.itemId] || 0) >= cost.quantity)
-                    ? 'border-border text-muted-foreground'
-                    : 'border-red-500/30 text-red-400'
-                }`}
-              >
-                {cost.quantity}x {getItemName(cost.itemId, cost.type)}
-              </span>
-            ))}
+            {nextTier.cost.map((cost, i) => {
+              const isClickable = cost.type === 'item' && RECIPE_MAP[cost.itemId];
+              return (
+                <span
+                  key={i}
+                  onClick={() => isClickable && handleItemClick(cost)}
+                  className={`font-mono-game text-[7px] px-1.5 py-0.5 border rounded-sm ${
+                    isClickable 
+                      ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50 transition-colors' 
+                      : ''
+                  } ${
+                    (cost.type === 'currency' ? state.currency >= cost.quantity :
+                     cost.type === 'item' ? (state.items[cost.itemId] || 0) >= cost.quantity :
+                     (state.ingots[cost.itemId] || 0) >= cost.quantity)
+                      ? 'border-border text-muted-foreground'
+                      : 'border-red-500/30 text-red-400'
+                  }`}
+                >
+                  {cost.quantity}x {getItemName(cost.itemId, cost.type)}
+                  {isClickable && <span className="ml-1 text-[6px] opacity-60">🔗</span>}
+                </span>
+              );
+            })}
           </div>
           <button
             onClick={() => dispatch({ type: 'UPGRADE_REFINERY', upgradeId })}
