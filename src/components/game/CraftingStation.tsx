@@ -12,7 +12,7 @@ interface CraftingStationProps {
 
 export function CraftingStation({ selectedItem }: CraftingStationProps) {
   const { state, dispatch } = useGame();
-  const { clearSelectedItem } = useNavigation();
+  const { clearSelectedItem, navigateToTab } = useNavigation();
   const [filter, setFilter] = useState<CatFilter>('all');
   const [search, setSearch] = useState('');
 
@@ -55,6 +55,16 @@ export function CraftingStation({ selectedItem }: CraftingStationProps) {
   const hasIngredient = (itemId: string, type: 'ingot' | 'item', qty: number) => {
     const source = type === 'ingot' ? state.ingots : state.items;
     return (source[itemId] || 0) >= qty;
+  };
+
+  const handleIngredientClick = (ing: { itemId: string; type: 'ingot' | 'item'; quantity: number }) => {
+    // Only navigate to crafting for 'item' type ingredients that have recipes
+    if (ing.type === 'item') {
+      const recipe = RECIPE_MAP[ing.itemId];
+      if (recipe) {
+        navigateToTab('craft', ing.itemId);
+      }
+    }
   };
 
   const filters: { key: CatFilter; label: string }[] = [
@@ -151,14 +161,22 @@ export function CraftingStation({ selectedItem }: CraftingStationProps) {
                   const label = ing.type === 'ingot'
                     ? (ORE_MAP[ing.itemId]?.name || ing.itemId) + ' Ingot'
                     : RECIPE_MAP[ing.itemId]?.name || ing.itemId;
+                  const isClickable = ing.type === 'item' && RECIPE_MAP[ing.itemId];
+                  
                   return (
                     <span
                       key={i}
+                      onClick={() => isClickable && handleIngredientClick(ing)}
                       className={`font-mono-game text-[10px] px-1.5 py-0.5 border rounded-sm ${
+                        isClickable 
+                          ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50 transition-colors' 
+                          : ''
+                      } ${
                         has ? 'border-primary/30 text-primary' : 'border-destructive/30 text-destructive'
                       }`}
                     >
                       {ing.quantity}x {label}
+                      {isClickable && <span className="ml-1 text-[6px] opacity-60">🔗</span>}
                     </span>
                   );
                 })}

@@ -52,7 +52,7 @@ function GameContent() {
   );
 }
 
-const CURRENT_VERSION = 'v0.75';
+const CURRENT_VERSION = 'v0.76';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
@@ -63,17 +63,17 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
     >
       <div className="max-w-md w-full bg-card border border-cyan-500 p-6 space-y-4 shadow-2xl shadow-cyan-500/20">
         <div className="space-y-1">
-          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Quality Update: v0.75</h2>
+          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Crafting Chain Update: v0.76</h2>
           <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
         </div>
         
         <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
-          <p>The upgrade terminal hums with new functionality. <span className="text-cyan-400">🔗 Clickable Upgrade Requirements</span> now let you jump directly to crafting recipes.</p>
+          <p>The fabricator hums with deeper connectivity. <span className="text-cyan-400">🔗 Recursive Crafting Navigation</span> now lets you follow ingredient chains seamlessly.</p>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li><span className="text-cyan-300">Clickable Items</span> — Craftable upgrade requirements now link to their recipes</li>
-            <li><span className="text-sky-300">Smart Navigation</span> — Auto-filters and searches when navigating to crafting</li>
-            <li><span className="text-purple-300">Visual Indicators</span> — Link icons show clickable requirements</li>
-            <li><span className="text-emerald-300">Enhanced UX</span> — Seamless workflow between upgrades and crafting</li>
+            <li><span className="text-cyan-300">Crafting Ingredients</span> — Click any craftable ingredient to jump to its recipe</li>
+            <li><span className="text-sky-300">Dependency Chains</span> — Follow complex crafting trees effortlessly</li>
+            <li><span className="text-purple-300">Visual Links</span> — Link icons show all clickable ingredients</li>
+            <li><span className="text-emerald-300">Enhanced Flow</span> — Seamless navigation between related recipes</li>
           </ul>
         </div>
 
