@@ -17,6 +17,7 @@ import { AchievementsPanel } from '@/components/game/AchievementsPanel';
 import { RebirthPanel } from '@/components/game/RebirthPanel';
 import { RefineryPanel } from '@/components/game/RefineryPanel';
 import { SidebarNav } from '@/components/game/SidebarNav';
+import { FactoryGrid } from '@/components/game/FactoryGrid';
 import { AuthScreen } from '@/components/game/AuthScreen';
 import { DiscordButton } from '@/components/game/DiscordButton';
 import { SaveIndicator } from '@/components/game/SaveIndicator';
@@ -25,7 +26,7 @@ import { SettingsButton } from '@/components/game/SettingsButton';
 import { Button } from '@/components/ui/button';
 import LightPillar from '@/components/ui/LightPillar';
 
-type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'refinery' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth';
+type Tab = 'mine' | 'inventory' | 'foundry' | 'craft' | 'machines' | 'garden' | 'transmute' | 'refinery' | 'market' | 'upgrades' | 'chat' | 'achievements' | 'rebirth' | 'plot';
 
 function GameContent() {
   const [tab, setTab] = useState<Tab>('mine');
@@ -52,7 +53,7 @@ function GameContent() {
   );
 }
 
-const CURRENT_VERSION = 'v0.76';
+const CURRENT_VERSION = 'v0.80';
 
 function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
   return (
@@ -63,17 +64,17 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
     >
       <div className="max-w-md w-full bg-card border border-cyan-500 p-6 space-y-4 shadow-2xl shadow-cyan-500/20">
         <div className="space-y-1">
-          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">Crafting Chain Update: v0.76</h2>
+          <h2 className="font-mono-game text-sm text-cyan-400 tracking-widest uppercase">The Great Factory Plot: v0.80</h2>
           <p className="font-mono-game text-[10px] text-muted-foreground">{CURRENT_VERSION}</p>
         </div>
         
         <div className="space-y-3 font-mono-game text-[11px] leading-relaxed text-foreground">
-          <p>The fabricator hums with deeper connectivity. <span className="text-cyan-400">🔗 Recursive Crafting Navigation</span> now lets you follow ingredient chains seamlessly.</p>
+          <p>A massive 32x32 expansion for your industrial empire. <span className="text-cyan-400">🏗️ Grid-Based Automation</span> is here.</p>
           <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-            <li><span className="text-cyan-300">Crafting Ingredients</span> — Click any craftable ingredient to jump to its recipe</li>
-            <li><span className="text-sky-300">Dependency Chains</span> — Follow complex crafting trees effortlessly</li>
-            <li><span className="text-purple-300">Visual Links</span> — Link icons show all clickable ingredients</li>
-            <li><span className="text-emerald-300">Enhanced Flow</span> — Seamless navigation between related recipes</li>
+            <li><span className="text-cyan-300">The Plot</span> — A 32x32 grid to place miners, generators, and assemblers</li>
+            <li><span className="text-sky-300">Energy Management</span> — Balance power production vs. consumption</li>
+            <li><span className="text-purple-300">26-Tier Upgrades</span> — Deep progression for every factory machine</li>
+            <li><span className="text-emerald-300">Spatial Strategy</span> — Optimize your layout for maximum efficiency</li>
           </ul>
         </div>
 
@@ -91,7 +92,12 @@ function UpdateNotification({ onAcknowledge }: { onAcknowledge: () => void }) {
 function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const { user, profile, signOut, isGuest } = useAuth();
   const { state, dispatch } = useGame();
-  const { navigateToTab, currentTab: navigationTab, selectedItem, clearSelectedItem } = useNavigation();
+  const { navigateToTab, currentTab: navigationTab, selectedItem, clearSelectedItem, clearHistory } = useNavigation();
+
+  const handleManualTabChange = (t: Tab) => {
+    setTab(t);
+    clearHistory();
+  };
 
   // Handle navigation from other components
   useEffect(() => {
@@ -125,6 +131,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
     { key: 'foundry', label: 'Foundry' },
     { key: 'craft', label: 'Craft' },
     { key: 'machines', label: 'Machines', hidden: !hasMachines },
+    { key: 'plot', label: '🏗️ The Plot' },
     { key: 'garden', label: 'Garden', hidden: !hasGarden },
     { key: 'transmute', label: '🩸 Transmute', hidden: !hasTransmuter },
     { key: 'refinery', label: '🏭 Refinery', hidden: !hasRefinery },
@@ -166,7 +173,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
 
       <header className="border-b border-border/20 px-2 sm:px-4 py-2 flex items-center justify-between sticky top-0 bg-background/60 backdrop-blur-md z-50">
         <div className="flex items-center gap-2 sm:gap-4">
-          <SidebarNav currentTab={tab} setTab={setTab} tabs={TABS} />
+          <SidebarNav currentTab={tab} setTab={handleManualTabChange} tabs={TABS} />
           <div className="h-4 w-px bg-border/40 mx-1 hidden sm:block" />
           <div className="flex items-center gap-2 sm:gap-3">
             <h1 className="font-mono-game text-[12px] sm:text-sm font-bold tracking-[0.15em] uppercase text-primary whitespace-nowrap">
@@ -190,7 +197,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
         {TABS.filter(t => !t.hidden && state.pinnedTabs?.includes(t.key)).map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => handleManualTabChange(t.key)}
             className={`font-mono-game text-[9px] sm:text-[10px] uppercase tracking-[0.2em] px-4 py-3 border-b-2 transition-all duration-300 ${
               tab === t.key
                 ? 'border-primary text-primary bg-primary/5 shadow-[inset_0_-8px_10px_-8px_rgba(var(--primary),0.2)]'
@@ -225,6 +232,7 @@ function GameContentInner({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void 
               {tab === 'upgrades' && <UpgradeShop />}
               {tab === 'achievements' && <AchievementsPanel />}
               {tab === 'rebirth' && <RebirthPanel />}
+              {tab === 'plot' && <FactoryGrid />}
               {tab === 'chat' && <ChatRoom />}
             </TabBackground>
           </motion.div>

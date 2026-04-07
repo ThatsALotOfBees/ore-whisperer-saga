@@ -12,7 +12,7 @@ interface CraftingStationProps {
 
 export function CraftingStation({ selectedItem }: CraftingStationProps) {
   const { state, dispatch } = useGame();
-  const { clearSelectedItem, navigateToTab } = useNavigation();
+  const { clearSelectedItem, navigateToTab, goBack, canGoBack } = useNavigation();
   const [filter, setFilter] = useState<CatFilter>('all');
   const [search, setSearch] = useState('');
 
@@ -57,12 +57,12 @@ export function CraftingStation({ selectedItem }: CraftingStationProps) {
     return (source[itemId] || 0) >= qty;
   };
 
-  const handleIngredientClick = (ing: { itemId: string; type: 'ingot' | 'item'; quantity: number }) => {
+  const handleIngredientClick = (ing: { itemId: string; type: 'ingot' | 'item'; quantity: number }, fromRecipeId: string) => {
     // Only navigate to crafting for 'item' type ingredients that have recipes
     if (ing.type === 'item') {
       const recipe = RECIPE_MAP[ing.itemId];
       if (recipe) {
-        navigateToTab('craft', ing.itemId);
+        navigateToTab('craft', ing.itemId, fromRecipeId);
       }
     }
   };
@@ -86,7 +86,17 @@ export function CraftingStation({ selectedItem }: CraftingStationProps) {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Fabrication Lab</h2>
+        <div className="flex items-center gap-3">
+          {canGoBack && (
+            <button
+              onClick={goBack}
+              className="font-mono-game text-[10px] text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider flex items-center gap-1"
+            >
+              <span>⬅</span> Back
+            </button>
+          )}
+          <h2 className="font-mono-game text-xs tracking-[0.2em] uppercase text-muted-foreground">Fabrication Lab</h2>
+        </div>
         <span className="font-mono-game text-[10px] text-muted-foreground">
           Machines: {state.unlockedMachines.length}
         </span>
@@ -166,7 +176,7 @@ export function CraftingStation({ selectedItem }: CraftingStationProps) {
                   return (
                     <span
                       key={i}
-                      onClick={() => isClickable && handleIngredientClick(ing)}
+                      onClick={() => isClickable && handleIngredientClick(ing, recipe.id)}
                       className={`font-mono-game text-[10px] px-1.5 py-0.5 border rounded-sm ${
                         isClickable 
                           ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/50 transition-colors' 

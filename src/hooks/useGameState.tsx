@@ -24,6 +24,10 @@ import {
   getHeatPerCycle, getHeatPenalty, getCriticalMeltMultiplier,
   type RefineryOutputType,
 } from '@/data/refinery';
+import {
+  FACTORY_MACHINE_MAP, FACTORY_MACHINES, getTileVein,
+  type FactoryMachineDef, type FactoryMachineTier
+} from '@/data/factory';
 
 export interface SmeltingJob {
   oreId: string;
@@ -112,6 +116,16 @@ export interface Refinery {
   totalProcessed: number; // lifetime ores processed
 }
 
+export interface GridTile {
+  id: string; // instance id
+  typeId: string; // e.g. 'basic_miner'
+  level: number; // 1-26
+  rotation: number; // 0, 90, 180, 270
+  lastTick: number;
+  status: 'idle' | 'working' | 'blocked' | 'offline';
+  recipeId?: string; // for assemblers
+}
+
 export interface GameState {
   currency: number;
   ores: Record<string, number>;
@@ -142,6 +156,9 @@ export interface GameState {
   };
   pinnedTabs: string[];
   autoDeleteSeeds: string[];
+  grid: (GridTile | null)[];
+  power: { produced: number, consumed: number };
+  lastGridTick: number;
 }
 
 const initialState: GameState = {
@@ -180,6 +197,9 @@ const initialState: GameState = {
   },
   pinnedTabs: ['mine', 'inventory', 'upgrades'],
   autoDeleteSeeds: [],
+  grid: new Array(1024).fill(null),
+  power: { produced: 0, consumed: 0 },
+  lastGridTick: 0,
 };
 
 // ─── Processing difficulty -> smelting speed factor ──────────────────────────
@@ -240,7 +260,14 @@ type Action =
   | { type: 'COLLECT_REFINERY_OUTPUT'; outputId: string }
   | { type: 'COLLECT_ALL_REFINERY_OUTPUTS' }
   | { type: 'UPGRADE_REFINERY'; upgradeId: string }
-  | { type: 'RESET_REFINERY_HEAT' };
+  | { type: 'RESET_REFINERY_HEAT' }
+  // Factory Grid actions
+  | { type: 'PLACE_MACHINE'; typeId: string; index: number }
+  | { type: 'REMOVE_MACHINE'; index: number }
+  | { type: 'UPGRADE_MACHINE'; index: number }
+  | { type: 'ROTATE_MACHINE'; index: number }
+  | { type: 'TICK_GRID'; now: number }
+  | { type: 'SET_MACHINE_RECIPE'; index: number; recipeId?: string; oreId?: string };
 
 export function getMiningSpeed(point: MiningPoint): number {
   const level = point.upgrades.drill_speed || 0;
@@ -301,6 +328,201 @@ function gameReducerBase(state: GameState, action: Action): GameState {
         ? pinned.filter(t => t !== tabId)
         : [...pinned, tabId];
       return { ...state, pinnedTabs: newPinned };
+    }
+
+    case 'PLACE_MACHINE': {
+      const { typeId, index } = action as { type: 'PLACE_MACHINE'; typeId: string; index: number };
+      const machineDef = FACTORY_MACHINE_MAP[typeId];
+      if (!machineDef) return state;
+
+      const newGrid = [...state.grid];
+      if (newGrid[index]) return state; // tile occupied
+
+      const currentCount = state.items[typeId] || 0;
+      if (currentCount <= 0) return state; // Not enough items
+
+      newGrid[index] = {
+        id: `grid_${Date.now()}_${index}`,
+        typeId,
+        level: 1,
+        rotation: 0,
+        lastTick: Date.now(),
+        status: 'idle',
+      };
+
+      return { 
+        ...state, 
+        grid: newGrid,
+        items: {
+          ...state.items,
+          [typeId]: currentCount - 1
+        }
+      };
+    }
+
+    case 'REMOVE_MACHINE': {
+      const { index } = action as { type: 'REMOVE_MACHINE'; index: number };
+      const machine = state.grid[index];
+      if (!machine) return state;
+
+      const newGrid = [...state.grid];
+      newGrid[index] = null;
+
+      return { 
+        ...state, 
+        grid: newGrid,
+        items: {
+          ...state.items,
+          [machine.typeId]: (state.items[machine.typeId] || 0) + 1
+        }
+      };
+    }
+
+    case 'ROTATE_MACHINE': {
+      const { index } = action as { type: 'ROTATE_MACHINE'; index: number };
+      const newGrid = [...state.grid];
+      const machine = newGrid[index];
+      if (!machine) return state;
+
+      machine.rotation = (machine.rotation + 90) % 360;
+      return { ...state, grid: newGrid };
+    }
+
+    case 'UPGRADE_MACHINE': {
+      const { index } = action as { type: 'UPGRADE_MACHINE'; index: number };
+      const newGrid = [...state.grid];
+      const machine = newGrid[index];
+      if (!machine || machine.level >= 26) return state;
+
+      const machineDef = FACTORY_MACHINE_MAP[machine.typeId];
+      const nextTier = machineDef.tiers[machine.level]; // level 1 means index 1 of tiers (which is level 2)
+      if (!nextTier) return state;
+
+      // Check cost
+      const canAfford = nextTier.cost.every(cost => {
+        if (cost.type === 'currency') return state.currency >= cost.quantity;
+        const source = cost.type === 'ingot' ? state.ingots : state.items;
+        return (source[cost.itemId] || 0) >= cost.quantity;
+      });
+
+      if (!canAfford) return state;
+
+      // Deduct cost
+      let newState = { ...state };
+      nextTier.cost.forEach(cost => {
+        if (cost.type === 'currency') {
+          newState.currency -= cost.quantity;
+        } else if (cost.type === 'ingot') {
+          newState.ingots = {
+            ...newState.ingots,
+            [cost.itemId]: (newState.ingots[cost.itemId] || 0) - cost.quantity
+          };
+        } else {
+          newState.items = {
+            ...newState.items,
+            [cost.itemId]: (newState.items[cost.itemId] || 0) - cost.quantity
+          };
+        }
+      });
+
+      // Update machine level locally in newGrid
+      newGrid[index] = { ...machine, level: machine.level + 1 };
+      
+      return { ...newState, grid: newGrid };
+    }
+
+    case 'SET_MACHINE_RECIPE': {
+      const { index, recipeId, oreId } = action as { type: 'SET_MACHINE_RECIPE'; index: number; recipeId?: string; oreId?: string };
+      const newGrid = [...state.grid];
+      const machine = newGrid[index];
+      if (!machine) return state;
+
+      newGrid[index] = { ...machine, recipeId: recipeId || oreId };
+      return { ...state, grid: newGrid };
+    }
+
+    case 'TICK_GRID': {
+      const { now } = action as { type: 'TICK_GRID'; now: number };
+      let producedPower = 0;
+      let consumedPower = 0;
+      let newState = { ...state };
+
+      // First pass: Calculate Power
+      state.grid.forEach(machine => {
+        if (!machine) return;
+        const def = FACTORY_MACHINE_MAP[machine.typeId];
+        const tier = def.tiers[machine.level - 1];
+        producedPower += tier.powerGen;
+        consumedPower += tier.powerDraw;
+      });
+
+      const hasPower = producedPower >= consumedPower;
+
+      // Second pass: Production
+      const newGrid = state.grid.map((machine, i) => {
+        if (!machine) return null;
+        const def = FACTORY_MACHINE_MAP[machine.typeId];
+        const tier = def.tiers[machine.level - 1];
+
+        if (!hasPower && tier.powerDraw > 0) {
+          return { ...machine, status: 'offline' as const };
+        }
+
+        // Logic for different machine types
+        if (def.category === 'miner') {
+          const vein = getTileVein(i);
+          if (!vein.type) return { ...machine, status: 'idle' as const };
+
+          const oresProduced = Math.floor(tier.effect * vein.richness);
+          const oreKey = vein.type === 'veinite' ? 'veinite' : vein.type; // already matching
+          
+          newState.ores = {
+            ...newState.ores,
+            [oreKey]: (newState.ores[oreKey] || 0) + oresProduced
+          };
+          return { ...machine, status: 'working' as const, lastTick: now };
+        }
+
+        if (def.category === 'smelter') {
+          const oreId = machine.recipeId;
+          if (!oreId || (state.ores[oreId] || 0) < 1) return { ...machine, status: 'idle' as const };
+
+          const batchSize = Math.floor(tier.effect);
+          const actualAmount = Math.min(state.ores[oreId], batchSize);
+          
+          newState.ores = { ...newState.ores, [oreId]: state.ores[oreId] - actualAmount };
+          newState.ingots = { ...newState.ingots, [oreId]: (newState.ingots[oreId] || 0) + actualAmount };
+          return { ...machine, status: 'working' as const, lastTick: now };
+        }
+
+        if (def.category === 'assembler') {
+          const recipeId = machine.recipeId;
+          const recipe = RECIPE_MAP[recipeId || ''];
+          if (!recipe) return { ...machine, status: 'idle' as const };
+
+          // Check materials
+          const canCraft = recipe.ingredients.every(ing => (state.items[ing.itemId] || 0) >= ing.quantity);
+          if (!canCraft) return { ...machine, status: 'idle' as const };
+
+          // Deduct materials
+          recipe.ingredients.forEach(ing => {
+            newState.items = { ...newState.items, [ing.itemId]: newState.items[ing.itemId] - ing.quantity };
+          });
+
+          // Add output
+          newState.items = { ...newState.items, [recipe.id]: (newState.items[recipe.id] || 0) + (recipe.outputQuantity || 1) };
+          return { ...machine, status: 'working' as const, lastTick: now };
+        }
+
+        return { ...machine, status: 'idle' as const };
+      });
+
+      return {
+        ...newState,
+        grid: newGrid,
+        power: { produced: producedPower, consumed: consumedPower },
+        lastGridTick: now,
+      };
     }
     case 'TRASH_SEED': {
       const { plantId, quantity } = action as { type: 'TRASH_SEED'; plantId: string; quantity?: number };
@@ -1786,6 +2008,9 @@ function migrateState(saved: any): GameState {
   if (!state.mutatedOres) state.mutatedOres = [];
   if (state.refinery === undefined) state.refinery = null;
   if (!state.refineryOutputs) state.refineryOutputs = [];
+  if (!state.grid) state.grid = new Array(1024).fill(null);
+  if (!state.power) state.power = { produced: 0, consumed: 0 };
+  if (state.lastGridTick === undefined) state.lastGridTick = 0;
   // Reset session start time for refinery on load
   if (state.refinery) {
     state.refinery.sessionStartTime = Date.now();
@@ -1949,6 +2174,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const interval = setInterval(() => dispatch({ type: 'TICK_REFINERY' }), REFINERY_TICK_MS);
     return () => clearInterval(interval);
   }, [!!state.refinery]);
+
+  // Factory Grid tick
+  useEffect(() => {
+    const hasMachines = state.grid.some(tile => tile !== null);
+    if (!hasMachines) return;
+    const interval = setInterval(() => dispatch({ type: 'TICK_GRID', now: Date.now() }), 1000);
+    return () => clearInterval(interval);
+  }, [state.grid.some(tile => tile !== null)]);
 
   const activePoint = state.miningPoints.find(p => p.id === state.activeMiningPointId) || state.miningPoints[0];
   const miningSpeed = getMiningSpeed(activePoint);
